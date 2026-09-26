@@ -8,8 +8,8 @@ The current and latest stack, and only what the build actually uses. Every versi
 
 | Layer | Choice | Version line | Why |
 |-------|--------|--------------|-----|
-| Kernel and handlers | Python | 3.13 (Lambda ARM64 runtime) | Latest serverless runtime; the whole team knows it; boto3 first-class |
-| Console toolchain | Node.js | 26 LTS | LTS line, matches the build machine |
+| Kernel and handlers | Python | 3.12, identical in the dev venv and the Lambda ARM64 runtime | Dev-prod parity beats chasing the newest runtime; one interpreter, zero mismatch bugs |
+| Console toolchain | Node.js | 26 (current line, on the build machine) | Matches the build machine; LTS status lands this fall |
 | Console framework | TypeScript | 5.x | Strict mode, no implicit any |
 
 ## AWS services (each earns its place, doc 04)
