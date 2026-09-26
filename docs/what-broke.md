@@ -24,3 +24,16 @@ Root cause: global pip config sets an extra-index-url to the NGC mirror with no-
 Fix: venv-local pip.ini pins index-url to official PyPI, and installs run with PIP_EXTRA_INDEX_URL overridden; toolchain verified complete via pip show.
 Prevention: never trust machine-global pip index config for project builds; the venv carries its own index policy, and CI installs from the official index only.
 Phase: P1 (environment bring-up)
+## [2026-09-27] policy env overrides were silently ignored
+Symptom: test_from_env_overrides_namespace failed; Policy.from_env accepted a source dict but namespace lists still came from os.environ.
+Root cause: the _csv helper read os.environ directly instead of the provided source mapping, so injected environments (tests, future Lambda handler) could not configure the namespace.
+Fix: _csv takes the source dict; all list settings flow through it.
+Prevention: helpers that receive an explicit environment must never fall back to reading process state; the signature is the contract.
+Phase: P1
+
+## [2026-09-27] gates were masked by a pipe and a commit went out on red
+Symptom: commit 2cd1eef landed while pytest was failing; the chain `pytest | tail && git commit` used tail's exit code, not pytest's.
+Root cause: pipe exit-code masking in the release chain; the gate existed but did not gate.
+Fix: all future gate chains run under `set -o pipefail`; CI runs pytest directly and is the durable backstop.
+Prevention: any command whose failure must block the next step is either unpiped, pipefailed, or chained with explicit exit checks. A green commit message is a claim; the ledger is where that claim gets audited.
+Phase: P1

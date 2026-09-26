@@ -10,8 +10,8 @@ import os
 from dataclasses import dataclass, field
 
 
-def _csv(name: str, default: str) -> frozenset[str]:
-    raw = os.environ.get(name, default)
+def _csv(source: dict[str, str], name: str, default: str) -> frozenset[str]:
+    raw = source.get(name, default)
     return frozenset(item.strip() for item in raw.split(",") if item.strip())
 
 
@@ -43,9 +43,13 @@ class Policy:
             version=source.get("ANTARES_POLICY_VERSION", base.version),
             class_weights=dict(base.class_weights),
             escalate_classes=frozenset(base.escalate_classes),
-            deny_classes=_csv("ANTARES_DENY_CLASSES", ""),
-            allowed_tables=_csv("ANTARES_ALLOWED_TABLES", ",".join(sorted(base.allowed_tables))),
-            allowed_buckets=_csv("ANTARES_ALLOWED_BUCKETS", ",".join(sorted(base.allowed_buckets))),
+            deny_classes=_csv(source, "ANTARES_DENY_CLASSES", ""),
+            allowed_tables=_csv(
+                source, "ANTARES_ALLOWED_TABLES", ",".join(sorted(base.allowed_tables))
+            ),
+            allowed_buckets=_csv(
+                source, "ANTARES_ALLOWED_BUCKETS", ",".join(sorted(base.allowed_buckets))
+            ),
             allowed_ssm_prefix=source.get("ANTARES_SSM_PREFIX", base.allowed_ssm_prefix),
             decision_ttl_days=int(source.get("ANTARES_DECISION_TTL_DAYS", base.decision_ttl_days)),
         )
