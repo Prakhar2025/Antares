@@ -40,6 +40,13 @@ strict = true
 mypy_path = "src"
 ignore_missing_imports = true
 
+[tool.coverage.run]
+omit = [
+    # Thin Lambda entrypoints: wired and exercised by the live deploy smoke test,
+    # everything testable lives in create_app with injected fakes (doc 14).
+    "src/antares/handlers/*",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

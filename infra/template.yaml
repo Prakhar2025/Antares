@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Antares dev namespace (P1): gate API and decision store.
+  Least-privilege by construction: the only writable resource is the
+  antares-dev-main table. No NAT, no always-on compute, no Bedrock in P1.
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures:
+      - arm64
+    MemorySize: 256
+    Timeout: 10
+    Tracing: Active
+    Environment:
+      Variables:
+        POWERTOOLS_SERVICE_NAME: antares-gate
+        POWERTOOLS_METRICS_NAMESPACE: Antares
+        LOG_LEVEL: INFO
+
+Resources:
+  MainTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: antares-dev-main
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+        - { AttributeName: state, AttributeType: S }
+        - { AttributeName: ts, AttributeType: S }
+        - { AttributeName: kind, AttributeType: S }
+        - { AttributeName: verdict_id, AttributeType: S }
+      KeySchema:
+        - { AttributeName: pk, KeyType: HASH }
+        - { AttributeName: sk, KeyType: RANGE }
+      GlobalSecondaryIndexes:
+        - IndexName: gsi1
+          KeySchema:
+            - { AttributeName: state, KeyType: HASH }
+            - { AttributeName: ts, KeyType: RANGE }
+          ProjectionType: ALL
+        - IndexName: gsi2
+          KeySchema:
+            - { AttributeName: kind, KeyType: HASH }
+            - { AttributeName: ts, KeyType: RANGE }
+          ProjectionType: ALL
+        - IndexName: gsi3
+          KeySchema:
+            - { AttributeName: verdict_id, KeyType: HASH }
+          ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - { Key: Project, Value: Antares }
+        - { Key: Env, Value: dev }
+
+  GateLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/antares-dev-gate
+      RetentionInDays: 7
+
+  GateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: antares-dev-gate
+      CodeUri: ../.aws-build
+      Handler: antares.handlers.gate_handler.handler
+      Environment:
+        Variables:
+          ANTARES_TABLE_NAME: antares-dev-main
+          ANTARES_HALT: "false"
+          ANTARES_POLICY_VERSION: p1
+          ANTARES_ALLOWED_TABLES: antares-dev-main,antares-dev-ledger
+          ANTARES_ALLOWED_BUCKETS: antares-dev-vault
+          ANTARES_SSM_PREFIX: /antares/dev/
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+                - dynamodb:Query
+              Resource: !GetAtt MainTable.Arn
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+              Resource: !Sub "${MainTable.Arn}/index/*"
+            - Effect: Allow
+              Action:
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: !GetAtt GateLogGroup.Arn
+        - AWSXRayDaemonWriteAccess
+      Events:
+        Gate:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/gate
+            Method: post
+        Decision:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/decisions/{id}
+            Method: get
+
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: antares-dev-api
+      StageName: dev
+      Auth:
+        ApiKeyRequired: true
+        UsagePlan:
+          CreateUsagePlan: PER_API_KEY
+          Throttle:
+            RateLimit: 20
+            BurstLimit: 40
+          Quota:
+            Limit: 5000
+            Period: DAY
+
+Outputs:
+  ApiUrl:
+    Description: Dev gate API base URL
+    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/dev"
+  ApiKeyId:
+    Description: API key id (fetch the value with apigateway get-api-key)
+    Value: !Ref ApiKey
+  TableName:
+    Description: Decision store table
+    Value: antares-dev-main
