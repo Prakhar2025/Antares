@@ -65,7 +65,6 @@ class GetObjectParams(_Strict):
 class PutObjectParams(_Strict):
     bucket: str
     key: str
-    content_type: str | None = None
 
 
 class DeleteObjectsParams(_Strict):
@@ -113,6 +112,13 @@ class ToolRegistry:
 
     def names(self) -> list[str]:
         return sorted(self._tools)
+
+    def with_tools(self, extra: list[ToolSpec]) -> ToolRegistry:
+        """Derive a registry with additional specs (tests, future packs)."""
+        merged = dict(self._tools)
+        for spec in extra:
+            merged[spec.tool] = spec
+        return ToolRegistry(merged)
 
 
 def build_default_registry() -> ToolRegistry:
