@@ -7,9 +7,9 @@ Version 0.1 · Status: Draft · 2026-09-27
 | Env | Namespace marker | Purpose |
 |-----|------------------|---------|
 | dev | `antares-dev-*` | build-time integration, disposable |
-| prod | `antares-demo-*` / `antares-main` | the public ship-gate stack |
+| prod | `antares-demo-*` / `antares-main` | the public stack |
 
-One AWS account, region us-east-1. Multi-account is the enterprise tier (doc 03 scope cuts). The security argument for namespace isolation in a single account is in doc 08; for the hackathon window this is the honest topology.
+One AWS account, region us-east-1. Multi-account is the enterprise tier (doc 03 scope cuts). The security argument for namespace isolation in a single account is in doc 08; for the launch window this is the honest topology.
 
 ## Deploy mechanics
 
@@ -19,9 +19,9 @@ One AWS account, region us-east-1. Multi-account is the enterprise tier (doc 03 
 - CI (GitHub Actions): ruff, mypy strict, pytest with coverage gate (90 percent), gitleaks with full checkout depth (the depth-1 gitleaks lesson is already in the author's ledger), then package-and-deploy to dev on merge; prod deploys are manual, from a green dev run.
 - Every deploy appends to the phase log; every failure appends to what-broke.md the same day.
 
-## Ship-gate strategy (the hackathon's pass-fail gate)
+## Availability-gate strategy (going public early, by design)
 
-The public URL goes live on build day 3, deliberately, while subsystems are still landing. Being live early converts the deadline from a threat into a non-event: days of polish happen on a deployed system, and a last-day outage has days of runway to be survived. Final polish never blocks the gate.
+The public URL goes live on build day 3, deliberately, while subsystems are still landing. Being live early converts launch day from a threat into a non-event: days of polish happen on a deployed system, and a last-day outage has days of runway to be survived. Final polish never blocks the gate.
 
 ## Cost model (design targets, reconciled weekly against the bill)
 

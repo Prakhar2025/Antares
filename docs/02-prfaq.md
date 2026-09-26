@@ -12,7 +12,7 @@ Every autonomous agent operating on AWS today turns model output directly into l
 
 "Text guardrails read strings. Scanners read code. Posture tools read configuration. Nobody was watching the moment an agent's thought becomes a production mutation," said Prakhar Shukla, creator of Antares. "We built that watcher, and we made it mathematical: models propose, code decides."
 
-The core is open source under Apache 2.0. A judge, an SRE, or a skeptical CTO can dispatch preset scenarios against live sandboxed AWS resources at the public console in under ten seconds, watch three independent judges vote in real time, watch a rogue deletion get reversed, and verify the cryptographic receipt in their own browser.
+The core is open source under Apache 2.0. An SRE, a security lead, or a skeptical CTO can dispatch preset scenarios against live sandboxed AWS resources at the public console in under ten seconds, watch three independent judges vote in real time, watch a rogue deletion get reversed, and verify the cryptographic receipt in their own browser.
 
 ### The first customer quote (composite, marked as such)
 
@@ -41,8 +41,8 @@ Its IAM scope ends at the sandbox namespace. Its own inputs pass through its own
 **How is this different from the author's Gatehouse?**
 Gatehouse gates one domain (scam-message triage) with one model family and no rollback. Antares is the general mechanism: any tool, any agent, live state probes, measured blast radius, compensating sagas, cross-vendor quorum, cryptographic receipts. Gatehouse is a case study; this is the platform.
 
-**What happens after the hackathon?**
-Era 1: open-source launch with SDKs and the benchmark corpus. Era 2: multi-account enterprise governance. Era 3: policy-as-code marketplace for agent governance packs. The hackathon build is deliberately the era-1 core, real and complete, not a throwaway.
+**What happens after the initial launch?**
+Era 1: open-source launch with SDKs and the benchmark corpus. Era 2: multi-account enterprise governance. Era 3: policy-as-code marketplace for agent governance packs. The initial build is deliberately the era-1 core, real and complete, not a throwaway.
 
 ## Changelog
 

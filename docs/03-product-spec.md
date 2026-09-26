@@ -8,13 +8,13 @@ Version 0.1 · Status: Draft · 2026-09-27
 
 **P2, the platform or security owner.** Owns the account the agents run in. Wants policy they can read, receipts they can audit, and proof the kernel cannot widen its own permissions. Success: can state exactly what the kernel may touch, and show a hash chain for any incident.
 
-**P3, the judge or evaluator.** No credentials, no patience, evaluating dozens of projects. Success: understands the entire system from one ten-second interaction on a public URL, with zero login.
+**P3, the evaluator or visitor.** No credentials, no patience, evaluating dozens of projects. Success: understands the entire system from one ten-second interaction on a public URL, with zero login.
 
 ## Journeys
 
 **J1, integrate (P1):** install SDK, wrap the tool dispatcher with `kernel.gate(call)`, get verdicts with evidence. Blocked actions return a machine-readable diagnosis the agent can self-correct from.
 
-**J2, judge (P3):** open the public console, click one of three preset scenarios (benign, injected, destructive), watch the gate, the quorum votes, the blast-radius math, and either the block or the live rollback, then verify the Merkle receipt client-side.
+**J2, evaluate (P3):** open the public console, click one of three preset scenarios (benign, injected, destructive), watch the gate, the quorum votes, the blast-radius math, and either the block or the live rollback, then verify the Merkle receipt client-side.
 
 **J3, respond (P2):** an incident lands (tripwire fire or hard block on an escalated action), the owner sees the evidence bundle, either approves a single-use bypass or lets the saga reversal stand.
 

@@ -5,19 +5,31 @@ Version 0.1 · Status: Draft · 2026-09-27
 ## System context
 
 ```mermaid
-C4Context
-    title Antares: system context
-    Person(agent, "Autonomous agent", "coding, DevOps or ops agent with tool privileges")
-    Person(owner, "Platform owner", "wants policy, receipts and incident control")
-    Person(judge, "Judge or visitor", "zero credentials, public console only")
-    System(kernel, "Antares", "gates, measures, reverses and attests every mutating action")
-    System_Ext(aws, "AWS sandbox namespace", "demo DynamoDB table, S3 bucket, SSM prefix")
-    System_Ext(bedrock, "Amazon Bedrock", "Nova Pro, adversary model, Guardrails baseline")
-    Rel(agent, kernel, "submits tool calls for gating")
-    Rel(kernel, aws, "read-only probes, gated mutations, saga reversals")
-    Rel(kernel, bedrock, "quorum votes, screening classification")
-    Rel(judge, kernel, "dispatches scenarios, watches telemetry, verifies receipts")
-    Rel(owner, kernel, "approves bypasses, reads incidents and receipts")
+flowchart LR
+    subgraph users["Who uses it"]
+        A["Autonomous agent<br/>tools and credentials"]
+        O["Platform owner<br/>policy and receipts"]
+        V["Visitor<br/>zero credentials"]
+    end
+    subgraph kernel["Antares kernel"]
+        direction TB
+        G["Gate<br/>code veto"]
+        Q["Quorum<br/>two model votes"]
+        PS["Probe and Saga<br/>measure, reverse"]
+        L["Ledger<br/>Merkle receipts"]
+    end
+    subgraph ext["External systems"]
+        S["AWS sandbox namespace<br/>demo table, bucket, SSM"]
+        B["Amazon Bedrock<br/>Nova Pro, adversary, Guardrails"]
+    end
+    A -->|"tool calls"| G
+    G --> Q
+    Q --> PS
+    PS --> L
+    PS -->|"probes and mutations"| S
+    Q -->|"votes"| B
+    V -->|"dispatch, verify"| kernel
+    O -->|"approve, audit"| kernel
 ```
 
 ## Subsystems
@@ -89,7 +101,7 @@ sequenceDiagram
 | Secrets Manager | Holds the demo honeypot secret | The leak on camera is a real managed fake secret |
 | CloudWatch + X-Ray | Structured logs, latency percentiles, traces | Observability is a product feature here |
 | IAM (least privilege per function) | Scope ends at the sandbox namespace | Doc 08 lists the exact actions; the kernel cannot widen itself |
-| CloudTrail | Audit of every AWS call the kernel makes | Doubles as the hackathon's coding-agent proof pack |
+| CloudTrail | Audit of every AWS call the kernel makes | Doubles as the coding-agent proof pack for the build record |
 
 ## Model strategy
 

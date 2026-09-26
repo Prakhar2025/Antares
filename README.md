@@ -10,25 +10,26 @@ Version 0.2 · Status: Draft, full suite awaiting owner review · Owner: Prakhar
 
 | # | Document | What it answers |
 |---|----------|-----------------|
-| 01 | [Vision](01-vision.md) | Problem, why now, landscape, open-core business model |
-| 02 | [PR/FAQ](02-prfaq.md) | Amazon working-backwards gate: launch-day press release and hard questions |
-| 03 | [Product Spec](03-product-spec.md) | Personas, journeys, features F1 to F8, acceptance criteria, scope cuts |
-| 04 | [Architecture](04-architecture.md) | Subsystems S0 to S7, request paths, AWS service map, failure matrix |
-| 05 | [Agent Contracts](05-agent-contracts.md) | The enforcement surface: schemas every agent and tool must satisfy |
-| 06 | [Data Design](06-data-design.md) | Single-table layout, state vault, Merkle chain, evidence storage |
-| 07 | [Evaluation](07-evaluation.md) | 300-case corpus, metric bars, adversary A/B protocol, honesty rules |
-| 08 | [Security and Privacy](08-security-privacy.md) | Threat model for the kernel itself, sandbox namespace, launch checklist |
-| 09 | [Deployment](09-deployment.md) | Environments, deploy mechanics, cost model, ship-gate strategy |
-| 10 | [Console](10-console.md) | Public zero-login surface, screens, interaction spec, design language status |
-| 11 | [Roadmap](11-roadmap.md) | Hackathon phases P0 to P6, eras beyond, what is cut and why |
-| 12 | [Pitch](12-pitch.md) | Video script skeleton, submission checklist, proof pack plan |
-| 13 | [API Spec](13-api-spec.md) | REST contract, error registry, EventBridge event schemas |
-| 14 | [Testing Strategy](14-testing-strategy.md) | Test pyramid, phase loop, CI gates, definition of done |
-| 15 | [Risk Register](15-risk-register.md) | Scored risks with mitigations and early warnings |
-| 16 | [Glossary](16-glossary.md) | Normative definitions of every term |
-| 17 | [Non-Functional and SLOs](17-nonfunctional-slo.md) | Latency budgets, availability, error budget policy, data classification |
-| 18 | [ADRs](18-adrs.md) | The six decisions that define the system |
-| -- | [What Broke](what-broke.md) | Real-time failure ledger, appended during build, never edited retroactively |
+| 01 | [Vision](docs/01-vision.md) | Problem, why now, landscape, open-core business model |
+| 02 | [PR/FAQ](docs/02-prfaq.md) | Amazon working-backwards gate: launch-day press release and hard questions |
+| 03 | [Product Spec](docs/03-product-spec.md) | Personas, journeys, features F1 to F8, acceptance criteria, scope cuts |
+| 04 | [Architecture](docs/04-architecture.md) | Subsystems S0 to S7, request paths, AWS service map, failure matrix |
+| 05 | [Agent Contracts](docs/05-agent-contracts.md) | The enforcement surface: schemas every agent and tool must satisfy |
+| 06 | [Data Design](docs/06-data-design.md) | Single-table layout, state vault, Merkle chain, evidence storage |
+| 07 | [Evaluation](docs/07-evaluation.md) | 300-case corpus, metric bars, adversary A/B protocol, honesty rules |
+| 08 | [Security and Privacy](docs/08-security-privacy.md) | Threat model for the kernel itself, sandbox namespace, launch checklist |
+| 09 | [Deployment](docs/09-deployment.md) | Environments, deploy mechanics, cost model, availability-gate strategy |
+| 10 | [Console](docs/10-console.md) | Public zero-login surface, screens, interaction spec, design language status |
+| 11 | [Roadmap](docs/11-roadmap.md) | Launch phases P0 to P6, eras beyond, what is cut and why |
+| 12 | [Pitch](docs/12-pitch.md) | Video script skeleton, launch checklist, proof pack plan |
+| 13 | [API Spec](docs/13-api-spec.md) | REST contract, error registry, EventBridge event schemas |
+| 14 | [Testing Strategy](docs/14-testing-strategy.md) | Test pyramid, phase loop, CI gates, definition of done |
+| 15 | [Risk Register](docs/15-risk-register.md) | Scored risks with mitigations and early warnings |
+| 16 | [Glossary](docs/16-glossary.md) | Normative definitions of every term |
+| 17 | [Non-Functional and SLOs](docs/17-nonfunctional-slo.md) | Latency budgets, availability, error budget policy, data classification |
+| 18 | [ADRs](docs/18-adrs.md) | The eight decisions that define the system |
+| 19 | [Tech Stack](docs/19-tech-stack.md) | The current and latest stack, pinning policy, rejected options |
+| -- | [What Broke](docs/what-broke.md) | Real-time failure ledger, appended during build, never edited retroactively |
 
 ## One-Paragraph Summary
 

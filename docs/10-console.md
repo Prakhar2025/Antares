@@ -4,7 +4,7 @@ Version 0.1 · Status: Draft, design language pending dedicated session with own
 
 ## Product surface (screens)
 
-| Screen | Job | Judge-visible |
+| Screen | Job | Visitor-visible |
 |--------|-----|---------------|
 | Dispatcher | Three preset scenarios (benign ops, injected build log, destructive mutation) plus a custom tool-call playground; one click dispatches a real gated call against live sandbox resources | yes, the front door |
 | Telemetry | Live stream of the pipeline: code gate findings, quorum votes with model ids, disagreement score, radius inputs, verdict, latency breakdown | yes |
@@ -12,7 +12,7 @@ Version 0.1 · Status: Draft, design language pending dedicated session with own
 | Receipts | Any decision's evidence bundle and Merkle receipt; client-side hash verification button | yes |
 | Benchmarks | The measured tables from doc 07 with dates and corpus version | yes |
 
-Zero login for all of the above. API keys exist for integrators; judges never need one. The ten-second comprehension path: land on Dispatcher, click the injected scenario, watch the vote stream, see the block and the tripwire fire, verify the receipt. Nothing else is required to understand the product.
+Zero login for all of the above. API keys exist for integrators; visitors never need one. The ten-second comprehension path: land on Dispatcher, click the injected scenario, watch the vote stream, see the block and the tripwire fire, verify the receipt. Nothing else is required to understand the product.
 
 ## Interaction spec (level of detail that prevents UI drift)
 

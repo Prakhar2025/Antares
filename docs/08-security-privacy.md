@@ -46,7 +46,7 @@ All data in the namespace is synthetic and classified PUBLIC-DEMO. No personal d
 5. Bypass token: reuse rejected, expiry rejected, wrong-verdict rejected.
 6. Merkle verification: console and SDK verify the same receipt, hashes match.
 7. Public surfaces expose no account identifiers beyond the sandbox ARN names.
-8. CloudTrail proof pack assembled (also feeds the hackathon agent-connection evidence).
+8. CloudTrail proof pack assembled (also feeds the coding-agent build record).
 
 ## Changelog
 

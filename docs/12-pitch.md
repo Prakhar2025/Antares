@@ -1,4 +1,4 @@
-# Doc 12: Pitch and Submission Plan
+# Doc 12: Pitch and Launch Plan
 
 Version 0.1 · Status: Draft · 2026-09-27
 
@@ -16,10 +16,10 @@ Version 0.1 · Status: Draft · 2026-09-27
 
 Recording quality: script read aloud before recording (doc 20-style discipline from the author's prior suite), no dead air, every cut under 4 seconds, captions burned in.
 
-## Submission checklist
+## Launch checklist
 
-- Category tag `#workplace-efficiency`, lane tag `#startups`, set on the Builder Center project page before deadline.
-- Live public URL (ship gate): on the project page and in the first line of the description.
+- Category tag `#workplace-efficiency`, lane tag `#startups`, set on the public project page before the announcement.
+- Live public URL: on the project page and in the first line of the description.
 - Documented proof of the coding-agent connection: CloudTrail evidence pack (the agent's own API calls building the stack), devlog, what-broke.md linked as the honest build ledger.
 - Development process section: phases P0 to P6 with dates, the adversary A/B story, and the two-agent architecture review (the decision record from docs 18).
 - Originality statement: no prior publication; portfolio lineage (TruthLayer, Gatehouse, Sentinel) disclosed as context, not reused code.

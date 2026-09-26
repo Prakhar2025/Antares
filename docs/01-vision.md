@@ -13,7 +13,7 @@ Autonomous AI agents are being granted privileged cloud access: coding agents th
 
 ## Why now
 
-Two curves crossed. Agent deployments moved from demos to production duties, and the models driving them got good enough to be trusted with real credentials. The governance layer did not move with them. This hackathon (2,593 registered builders invited to connect coding agents to AWS) is a compressed preview of the next two years of enterprise reality.
+Two curves crossed. Agent deployments moved from demos to production duties, and the models driving them got good enough to be trusted with real credentials. The governance layer did not move with them. Every week another team hands a model the keys to production infrastructure, and the pattern only accelerates.
 
 ## The landscape, and the gap
 
