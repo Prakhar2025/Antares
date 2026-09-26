@@ -46,6 +46,7 @@ Model ids live in one config module. Regional inference profiles and direct ids 
 | boto3 | All AWS calls |
 | orjson | Fast canonical JSON serialization for Merkle hashing |
 | aws-lambda-powertools | Logging, metrics, tracing, middleware |
+| aws-xray-sdk | Required by Powertools Tracer; ships in the bundle |
 | strands-agents | The demo playground agent only; the kernel core stays dependency-light |
 | hypothesis | Property tests for fusion rules and radius math (eval phase) |
 
@@ -68,7 +69,7 @@ Model ids live in one config module. Regional inference profiles and direct ids 
 | hypothesis | Property-based tests |
 | gitleaks | Secret scanning, full checkout depth |
 | GitHub Actions | CI: lint, type, test, gate, package, deploy to dev |
-| AWS CLI v2 + SAM template syntax | Deployed via `cloudformation package` + `cloudformation deploy` |
+| AWS CLI v2 + SAM template syntax | Deployed via `cloudformation package` + `cloudformation deploy`; the Lambda bundle is built with aarch64 manylinux wheels (`--platform manylinux2014_aarch64`) and excludes boto3 and botocore (the runtime ships them) |
 | Mermaid | Diagrams, rendered natively on GitHub |
 
 ## Rejected, and why

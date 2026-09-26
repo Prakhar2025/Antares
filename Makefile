@@ -1,9 +1,11 @@
 .PHONY: install lint type test gates build package deploy
 
 ifeq ($(OS),Windows_NT)
-PY := .venv/Scripts/python.exe
+# Absolute path: Windows CreateProcess PATH-searches even slash-relative
+# paths, and a stray PATH entry can silently steal the interpreter.
+override PY := $(CURDIR)/.venv/Scripts/python.exe
 else
-PY := .venv/bin/python
+override PY := $(CURDIR)/.venv/bin/python
 endif
 
 BUCKET := antares-deploy-846719029074

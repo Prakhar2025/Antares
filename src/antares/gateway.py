@@ -76,20 +76,36 @@ def create_app(
         metrics.add_metric(name="VerdictCount", unit=MetricUnit.Count, value=1)
 
     def _persist(verdict: Verdict) -> None:
+        """Dual-write single-table pattern (doc 06): a lookup item keyed by
+        verdict id and a state feed item. Atomic via a transaction; no GSIs."""
         ttl = int(time.time()) + policy.decision_ttl_days * 86400
-        ddb.put_item(
-            TableName=table_name,
-            Item={
-                "pk": {"S": "TENANT#default"},
-                "sk": {"S": f"DECISION#{verdict.ts}#{verdict.verdict_id}"},
-                "verdict_id": {"S": verdict.verdict_id},
-                "state": {"S": verdict.state.value},
-                "action_class": {"S": verdict.gate.action_class.value},
-                "ts": {"S": verdict.ts},
-                "ttl": {"N": str(ttl)},
-                "latency_ms": {"N": str(verdict.latency_ms.total)},
-                "verdict": {"S": verdict.model_dump_json()},
-            },
+        verdict_json = verdict.model_dump_json()
+        ddb.transact_write_items(
+            TransactItems=[
+                {"Put": {
+                    "TableName": table_name,
+                    "Item": {
+                        "pk": {"S": f"VERDICT#{verdict.verdict_id}"},
+                        "sk": {"S": "META"},
+                        "verdict_id": {"S": verdict.verdict_id},
+                        "state": {"S": verdict.state.value},
+                        "ttl": {"N": str(ttl)},
+                        "verdict": {"S": verdict_json},
+                    },
+                }},
+                {"Put": {
+                    "TableName": table_name,
+                    "Item": {
+                        "pk": {"S": f"STATE#{verdict.state.value}"},
+                        "sk": {"S": f"{verdict.ts}#{verdict.verdict_id}"},
+                        "verdict_id": {"S": verdict.verdict_id},
+                        "action_class": {"S": verdict.gate.action_class.value},
+                        "ttl": {"N": str(ttl)},
+                        "latency_ms": {"N": str(verdict.latency_ms.total)},
+                        "verdict": {"S": verdict_json},
+                    },
+                }},
+            ]
         )
 
     def _gate(event: dict[str, Any]) -> dict[str, Any]:
@@ -139,17 +155,14 @@ def create_app(
         verdict_id = (event.get("pathParameters") or {}).get("id") or path.rsplit("/", 1)[-1]
         if not verdict_id:
             return problem(404, "verdict-not-found", "Not found", "missing decision id")
-        result = ddb.query(
+        result = ddb.get_item(
             TableName=table_name,
-            IndexName="gsi3",
-            KeyConditionExpression="verdict_id = :v",
-            ExpressionAttributeValues={":v": {"S": verdict_id}},
-            Limit=1,
+            Key={"pk": {"S": f"VERDICT#{verdict_id}"}, "sk": {"S": "META"}},
         )
-        items = result.get("Items") or []
-        if not items:
+        item = result.get("Item")
+        if not item:
             return problem(404, "verdict-not-found", "Not found", f"no decision {verdict_id!r}")
-        return {"statusCode": 200, "headers": _headers(_JSON), "body": items[0]["verdict"]["S"]}
+        return {"statusCode": 200, "headers": _headers(_JSON), "body": item["verdict"]["S"]}
 
     def handle(event: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         method = (event.get("httpMethod") or "GET").upper()

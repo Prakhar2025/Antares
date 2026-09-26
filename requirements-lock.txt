@@ -2,6 +2,7 @@ annotated-types==0.8.0
 antares==0.1.0
 ast_serialize==0.11.2
 aws_lambda_powertools==3.35.0
+aws-xray-sdk==2.15.0
 boto3==1.43.103
 botocore==1.43.103
 colorama==0.4.6
@@ -30,3 +31,4 @@ sortedcontainers==2.4.0
 typing_extensions==4.16.0
 typing-inspection==0.4.4
 urllib3==2.8.0
+wrapt==2.4.1

@@ -10,20 +10,21 @@ from antares.registry import build_default_registry
 
 
 class FakeDynamo:
-    """Mirrors boto3 put_item/query semantics (ledger lesson, doc 14)."""
+    """Mirrors transact_write_items and get_item semantics (ledger lesson, doc 14)."""
 
     def __init__(self) -> None:
-        self.items: list[tuple[str, dict]] = []
+        self.items: dict[tuple[str, str], dict] = {}
 
-    def put_item(self, TableName: str, Item: dict) -> dict:  # noqa: N803
-        self.items.append((TableName, Item))
+    def transact_write_items(self, TransactItems: list) -> dict:  # noqa: N803
+        for entry in TransactItems:
+            put = entry["Put"]
+            item = put["Item"]
+            self.items[(item["pk"]["S"], item["sk"]["S"])] = item
         return {}
 
-    def query(self, **kwargs: object) -> dict:
-        values = kwargs.get("ExpressionAttributeValues") or {}
-        wanted = values.get(":v", {}).get("S")
-        matches = [item for _, item in self.items if item.get("verdict_id", {}).get("S") == wanted]
-        return {"Items": matches}
+    def get_item(self, TableName: str, Key: dict) -> dict:  # noqa: N803
+        item = self.items.get((Key["pk"]["S"], Key["sk"]["S"]))
+        return {"Item": item} if item else {}
 
 
 def _event(method: str, path: str, body: dict | None = None) -> dict:
@@ -71,13 +72,13 @@ class TestGateRoute:
         assert verdict["state"] == "ALLOW"
         assert verdict["latency_ms"]["total"] >= 0
         assert verdict["schema_version"] == "v1"
-        assert len(fake_ddb.items) == 1
-        table, item = fake_ddb.items[0]
-        assert table == "antares-dev-main"
-        assert item["pk"]["S"] == "TENANT#default"
-        assert item["sk"]["S"].startswith("DECISION#")
-        assert item["state"]["S"] == "ALLOW"
-        assert int(item["ttl"]["N"]) > 0
+        # dual-write: a verdict lookup item and a state feed item
+        assert len(fake_ddb.items) == 2
+        lookup = fake_ddb.items[(f"VERDICT#{verdict['verdict_id']}", "META")]
+        assert lookup["verdict_id"]["S"] == verdict["verdict_id"]
+        assert int(lookup["ttl"]["N"]) > 0
+        feed = next(item for key, item in fake_ddb.items.items() if key[0] == "STATE#ALLOW")
+        assert feed["action_class"]["S"] == "READ"
 
     def test_destructive_class_abstains(self, app) -> None:
         response = app(_event("POST", "/v1/gate", _call(

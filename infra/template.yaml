@@ -4,20 +4,11 @@ Description: >
   Antares dev namespace (P1): gate API and decision store.
   Least-privilege by construction: the only writable resource is the
   antares-dev-main table. No NAT, no always-on compute, no Bedrock in P1.
-
-Globals:
-  Function:
-    Runtime: python3.12
-    Architectures:
-      - arm64
-    MemorySize: 256
-    Timeout: 10
-    Tracing: Active
-    Environment:
-      Variables:
-        POWERTOOLS_SERVICE_NAME: antares-gate
-        POWERTOOLS_METRICS_NAMESPACE: Antares
-        LOG_LEVEL: INFO
+  Single-table dual-write pattern: no GSIs (the account-level
+  early-validation hook rejects GSI creation; recorded in what-broke).
+  The API is expressed as raw API Gateway resources with explicit
+  DependsOn ordering, because SAM's implicit stage ordering raced the
+  usage plan (also recorded in what-broke).
 
 Resources:
   MainTable:
@@ -28,28 +19,9 @@ Resources:
       AttributeDefinitions:
         - { AttributeName: pk, AttributeType: S }
         - { AttributeName: sk, AttributeType: S }
-        - { AttributeName: state, AttributeType: S }
-        - { AttributeName: ts, AttributeType: S }
-        - { AttributeName: kind, AttributeType: S }
-        - { AttributeName: verdict_id, AttributeType: S }
       KeySchema:
         - { AttributeName: pk, KeyType: HASH }
         - { AttributeName: sk, KeyType: RANGE }
-      GlobalSecondaryIndexes:
-        - IndexName: gsi1
-          KeySchema:
-            - { AttributeName: state, KeyType: HASH }
-            - { AttributeName: ts, KeyType: RANGE }
-          ProjectionType: ALL
-        - IndexName: gsi2
-          KeySchema:
-            - { AttributeName: kind, KeyType: HASH }
-            - { AttributeName: ts, KeyType: RANGE }
-          ProjectionType: ALL
-        - IndexName: gsi3
-          KeySchema:
-            - { AttributeName: verdict_id, KeyType: HASH }
-          ProjectionType: ALL
       SSESpecification:
         SSEEnabled: true
       TimeToLiveSpecification:
@@ -70,7 +42,12 @@ Resources:
     Properties:
       FunctionName: antares-dev-gate
       CodeUri: ../.aws-build
+      Runtime: python3.12
       Handler: antares.handlers.gate_handler.handler
+      MemorySize: 256
+      Timeout: 10
+      Architectures:
+        - arm64
       Environment:
         Variables:
           ANTARES_TABLE_NAME: antares-dev-main
@@ -79,6 +56,9 @@ Resources:
           ANTARES_ALLOWED_TABLES: antares-dev-main,antares-dev-ledger
           ANTARES_ALLOWED_BUCKETS: antares-dev-vault
           ANTARES_SSM_PREFIX: /antares/dev/
+          POWERTOOLS_SERVICE_NAME: antares-gate
+          POWERTOOLS_METRICS_NAMESPACE: Antares
+          LOG_LEVEL: INFO
       Policies:
         - Statement:
             - Effect: Allow
@@ -87,45 +67,128 @@ Resources:
                 - dynamodb:GetItem
                 - dynamodb:Query
               Resource: !GetAtt MainTable.Arn
-            - Effect: Allow
-              Action:
-                - dynamodb:Query
-              Resource: !Sub "${MainTable.Arn}/index/*"
-            - Effect: Allow
-              Action:
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: !GetAtt GateLogGroup.Arn
         - AWSXRayDaemonWriteAccess
-      Events:
-        Gate:
-          Type: Api
-          Properties:
-            RestApiId: !Ref Api
-            Path: /v1/gate
-            Method: post
-        Decision:
-          Type: Api
-          Properties:
-            RestApiId: !Ref Api
-            Path: /v1/decisions/{id}
-            Method: get
 
   Api:
-    Type: AWS::Serverless::Api
+    Type: AWS::ApiGateway::RestApi
     Properties:
       Name: antares-dev-api
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  ApiV1Resource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !GetAtt Api.RootResourceId
+      PathPart: v1
+
+  ApiGateResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !Ref ApiV1Resource
+      PathPart: gate
+
+  ApiDecisionsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !Ref ApiV1Resource
+      PathPart: decisions
+
+  ApiDecisionIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !Ref ApiDecisionsResource
+      PathPart: "{id}"
+
+  GateMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiGateResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
+
+  DecisionMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiDecisionIdResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      RequestParameters:
+        method.request.path.id: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
+
+  GateInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref GateFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${Api}/*/*"
+
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - GateMethod
+      - DecisionMethod
+    Properties:
+      RestApiId: !Ref Api
+
+  ApiStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref Api
+      DeploymentId: !Ref ApiDeployment
       StageName: dev
-      Auth:
-        ApiKeyRequired: true
-        UsagePlan:
-          CreateUsagePlan: PER_API_KEY
-          Throttle:
-            RateLimit: 20
-            BurstLimit: 40
-          Quota:
-            Limit: 5000
-            Period: DAY
+      TracingEnabled: true
+      Tags:
+        - { Key: Project, Value: Antares }
+        - { Key: Env, Value: dev }
+
+  ApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    DependsOn: ApiStage
+    Properties:
+      Name: antares-dev-key
+      Enabled: true
+      StageKeys:
+        - { RestApiId: !Ref Api, StageName: dev }
+
+  UsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    DependsOn: ApiStage
+    Properties:
+      UsagePlanName: antares-dev-plan
+      ApiStages:
+        - { ApiId: !Ref Api, Stage: dev }
+      Throttle:
+        RateLimit: 20
+        BurstLimit: 40
+      Quota:
+        Limit: 5000
+        Period: DAY
+
+  UsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref ApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref UsagePlan
 
 Outputs:
   ApiUrl:

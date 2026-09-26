@@ -20,12 +20,11 @@ Antares: the deterministic execution kernel for autonomous AI agents on AWS. Age
 ## Repo map (as it will exist after P1)
 
 ```
-docs/            this suite (01 to 18, what-broke.md)
-src/antares/  the kernel package: gate/, quorum/, probes/, saga/, ledger/, perimeter/
-lambda/          handler shims for the package
+docs/            the suite (01 to 19, what-broke.md, phase-log.md)
+src/antares/     the kernel package: schemas, registry, policy, gate, gateway, handlers/
 console/         Next.js console (P4, after the design session)
 evals/           corpus, harness, baseline runners (P5)
-infra/           template.yaml (SAM), deploy scripts
+infra/           template.yaml (SAM + raw API Gateway resources), Makefile deploy targets
 tests/           unit, contract (boto3 fakes), integration, chaos
 ```
 
@@ -34,7 +33,9 @@ tests/           unit, contract (boto3 fakes), integration, chaos
 ```
 make test        unit + contract, must be green before any push
 make lint        ruff + mypy strict
-make deploy-dev  package + deploy to the dev namespace
+make build      aarch64 lambda bundle
+make package    upload artifact, render template
+make deploy     deploy the dev stack
 make eval        doc 07 harness (P5)
 make verify      receipt verification against a live decision
 ```

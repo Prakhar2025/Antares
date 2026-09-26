@@ -37,9 +37,9 @@ Enterprises are handing autonomous agents privileged cloud access, and a single 
 
 ## Build Limitations (read before judging)
 
-Nothing is built yet as of this version. Every number in this suite is a design target until the benchmarks of doc 07 are run and back-filled with dated, measured values. Specifics:
+P1 is live: the gate API runs on AWS and returns real verdicts (22 to 34 ms in-Lambda, measured; see docs/phase-log.md). The layers above it are still design targets until their phases land. Specifics:
 
-- **Latency figures** in docs 04, 13 and 17 are budgets and targets, not measurements.
+- **Fast-path latency** is measured (22 to 34 ms in-Lambda against the 120 ms budget); quorum, probe and rollback figures remain budgets until P2 and P3.
 - **Detection metrics** in doc 07 are targets on a designed corpus, not observed field performance.
 - **Multi-account governance** (Control Tower, cross-org roles) is documented as the enterprise tier and deliberately out of scope for the build window.
 - **Mutation surface** is limited to the sandbox namespace: one DynamoDB table, one S3 bucket, one SSM path prefix. The kernel's IAM role can touch nothing else, by policy and by proof (doc 08).

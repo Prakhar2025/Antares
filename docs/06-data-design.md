@@ -14,9 +14,14 @@ Version 0.1 · Status: Draft · 2026-09-27
 | Incident | `TENANT#default` | `INCIDENT#{iso_ts}#{incident_id}` | kind, refs, evidence bundle pointer | 90 days |
 | Metrics | `TENANT#default` | `METRICS#{yyyy-mm-dd}` | counters: calls, verdicts by state, class, latency percentiles, cost estimate | 180 days |
 
-GSIs: `GSI1` verdict state + ts (incident feed and console queries), `GSI2` incident kind + ts.
+Access patterns are served by the dual-write layout (no GSIs: the
+account-level early-validation hook rejects GSI creation, recorded in
+what-broke). Every decision writes two items: the lookup item
+(`pk = VERDICT#{id}`) and the state feed item (`pk = STATE#{state}`).
+Incidents (P2) write `pk = INCIDENT#{kind}`; daily metrics (P3) write
+`pk = METRICS#{date}`.
 
-Access patterns to prove in tests: verdict by id; recent verdicts by state; incidents by kind; vault fetch by action id (single-digit ms, saga-critical); daily metrics rollup; canary status flip.
+Access patterns to prove in tests: verdict by id (GetItem on the lookup item); recent verdicts by state (Query on the feed item); incidents by kind (Query); vault fetch by action id (single-digit ms, saga-critical); daily metrics rollup; canary status flip.
 
 ## The state vault (saga-critical)
 
@@ -38,4 +43,5 @@ No agent conversation transcripts, no user identifiers, no real customer data. T
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2 | 2026-09-27 | P1 build: GSIs replaced by the dual-write lookup and feed pattern after the account early-validation hook rejected GSI creation (what-broke). |
 | 0.1 | 2026-09-27 | Initial draft for owner review. |
