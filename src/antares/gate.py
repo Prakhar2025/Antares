@@ -100,20 +100,24 @@ def run_gate(call: ToolCall, registry: ToolRegistry, policy: Policy) -> GateOutc
     findings: list[Finding] = []
 
     if call.action != spec.action:
-        findings.append(Finding(
-            rule_id="GATE-ACT-001",
-            detail=f"action {call.action!r} does not match registered action {spec.action!r}",
-            severity="block",
-        ))
+        findings.append(
+            Finding(
+                rule_id="GATE-ACT-001",
+                detail=f"action {call.action!r} does not match registered action {spec.action!r}",
+                severity="block",
+            )
+        )
 
     try:
         spec.params_model.model_validate(call.params)
     except ValidationError as error:
-        findings.append(Finding(
-            rule_id="GATE-SCH-001",
-            detail=f"parameters failed the tool schema: {_first_schema_error(error)}",
-            severity="block",
-        ))
+        findings.append(
+            Finding(
+                rule_id="GATE-SCH-001",
+                detail=f"parameters failed the tool schema: {_first_schema_error(error)}",
+                severity="block",
+            )
+        )
 
     for field, kind in spec.resource_fields.items():
         value = call.params.get(field)
@@ -125,47 +129,57 @@ def run_gate(call: ToolCall, registry: ToolRegistry, policy: Policy) -> GateOutc
     for path, text in _iter_strings(call.params):
         for metachar in META_CHARS:
             if metachar in text:
-                findings.append(Finding(
-                    rule_id="GATE-SHL-001",
-                    detail=f"shell metacharacter {metachar!r} in {path}",
-                    severity="block",
-                ))
+                findings.append(
+                    Finding(
+                        rule_id="GATE-SHL-001",
+                        detail=f"shell metacharacter {metachar!r} in {path}",
+                        severity="block",
+                    )
+                )
                 break
         lowered = text.lower()
         for pattern in DESTRUCTIVE_PATTERNS:
             if pattern in lowered:
-                findings.append(Finding(
-                    rule_id="GATE-SHL-002",
-                    detail=f"destructive pattern {pattern!r} in {path}",
-                    severity="block",
-                ))
+                findings.append(
+                    Finding(
+                        rule_id="GATE-SHL-002",
+                        detail=f"destructive pattern {pattern!r} in {path}",
+                        severity="block",
+                    )
+                )
                 break
 
     weight = policy.class_weights[spec.action_class.value]
-    findings.append(Finding(
-        rule_id="GATE-CLS-001",
-        detail=f"action class {spec.action_class.value} carries severity weight {weight}",
-        severity="info",
-    ))
+    findings.append(
+        Finding(
+            rule_id="GATE-CLS-001",
+            detail=f"action class {spec.action_class.value} carries severity weight {weight}",
+            severity="info",
+        )
+    )
 
     code_blocked = any(finding.severity == "block" for finding in findings)
     if spec.action_class.value in policy.deny_classes:
-        findings.append(Finding(
-            rule_id="GATE-POL-001",
-            detail=f"action class {spec.action_class.value} is denied by namespace policy",
-            severity="block",
-        ))
+        findings.append(
+            Finding(
+                rule_id="GATE-POL-001",
+                detail=f"action class {spec.action_class.value} is denied by namespace policy",
+                severity="block",
+            )
+        )
         code_blocked = True
 
     if code_blocked:
         state = VerdictState.HARD_BLOCK
     elif spec.action_class.value in policy.escalate_classes:
         state = VerdictState.ABSTAIN
-        findings.append(Finding(
-            rule_id="GATE-ESC-001",
-            detail="action class requires quorum review; the quorum ships in pipeline v2",
-            severity="info",
-        ))
+        findings.append(
+            Finding(
+                rule_id="GATE-ESC-001",
+                detail="action class requires quorum review; the quorum ships in pipeline v2",
+                severity="info",
+            )
+        )
     else:
         state = VerdictState.ALLOW
 

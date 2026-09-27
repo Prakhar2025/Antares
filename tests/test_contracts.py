@@ -40,7 +40,10 @@ class TestPolicy:
     def test_class_weights_match_doc06(self) -> None:
         policy = Policy()
         assert policy.class_weights == {
-            "READ": 0.0, "WRITE": 0.3, "PERMISSION": 0.8, "DESTROY": 1.0,
+            "READ": 0.0,
+            "WRITE": 0.3,
+            "PERMISSION": 0.8,
+            "DESTROY": 1.0,
         }
 
     def test_escalate_classes_match_doc05(self) -> None:
@@ -48,12 +51,14 @@ class TestPolicy:
         assert policy.escalate_classes == frozenset({"DESTROY", "PERMISSION"})
 
     def test_from_env_overrides_namespace(self) -> None:
-        policy = Policy.from_env({
-            "ANTARES_ALLOWED_TABLES": "prod-main",
-            "ANTARES_ALLOWED_BUCKETS": "prod-vault",
-            "ANTARES_SSM_PREFIX": "/antares/prod/",
-            "ANTARES_DENY_CLASSES": "DESTROY",
-        })
+        policy = Policy.from_env(
+            {
+                "ANTARES_ALLOWED_TABLES": "prod-main",
+                "ANTARES_ALLOWED_BUCKETS": "prod-vault",
+                "ANTARES_SSM_PREFIX": "/antares/prod/",
+                "ANTARES_DENY_CLASSES": "DESTROY",
+            }
+        )
         assert policy.allowed_tables == frozenset({"prod-main"})
         assert policy.allowed_buckets == frozenset({"prod-vault"})
         assert policy.allowed_ssm_prefix == "/antares/prod/"

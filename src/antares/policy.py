@@ -19,7 +19,7 @@ def _csv(source: dict[str, str], name: str, default: str) -> frozenset[str]:
 class Policy:
     """Deterministic policy for one deployment namespace."""
 
-    version: str = "p1"
+    version: str = "1.0"
     # Hard-coded severity weights per action class (doc 04, ADR-001).
     class_weights: dict[str, float] = field(
         default_factory=lambda: {"READ": 0.0, "WRITE": 0.3, "PERMISSION": 0.8, "DESTROY": 1.0}
@@ -33,6 +33,15 @@ class Policy:
     allowed_buckets: frozenset[str] = frozenset({"antares-dev-vault"})
     allowed_ssm_prefix: str = "/antares/dev/"
     decision_ttl_days: int = 90
+    # Quorum thresholds (doc 05 section 4): deterministic, published, test-covered.
+    adversary_block: float = 0.70
+    blast_abstain: float = 0.70
+    divergence_abstain: float = 0.60
+    bypass_ttl_seconds: int = 60
+    # Model ids (ADR-002): config, never hardcoded in handlers.
+    reasoner_model_id: str = "us.amazon.nova-pro-v1:0"
+    adversary_model_id: str = "us.meta.llama3-3-70b-instruct-v1:0"
+    perimeter_model_id: str = "us.amazon.nova-lite-v1:0"
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> Policy:
@@ -52,4 +61,13 @@ class Policy:
             ),
             allowed_ssm_prefix=source.get("ANTARES_SSM_PREFIX", base.allowed_ssm_prefix),
             decision_ttl_days=int(source.get("ANTARES_DECISION_TTL_DAYS", base.decision_ttl_days)),
+            adversary_block=float(source.get("ANTARES_ADVERSARY_BLOCK", base.adversary_block)),
+            blast_abstain=float(source.get("ANTARES_BLAST_ABSTAIN", base.blast_abstain)),
+            divergence_abstain=float(
+                source.get("ANTARES_DIVERGENCE_ABSTAIN", base.divergence_abstain)
+            ),
+            bypass_ttl_seconds=int(source.get("ANTARES_BYPASS_TTL", base.bypass_ttl_seconds)),
+            reasoner_model_id=source.get("ANTARES_REASONER_MODEL", base.reasoner_model_id),
+            adversary_model_id=source.get("ANTARES_ADVERSARY_MODEL", base.adversary_model_id),
+            perimeter_model_id=source.get("ANTARES_PERIMETER_MODEL", base.perimeter_model_id),
         )

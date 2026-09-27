@@ -31,6 +31,24 @@ Resources:
         - { Key: Project, Value: Antares }
         - { Key: Env, Value: dev }
 
+  SigningKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Antares bypass token signing (HMAC_SHA_256, doc 05 section 5)
+      KeySpec: HMAC_256
+      KeyUsage: GENERATE_VERIFY_MAC
+      Enabled: true
+      PendingWindowInDays: 7
+      Tags:
+        - { Key: Project, Value: Antares }
+        - { Key: Env, Value: dev }
+
+  SigningKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/antares-dev-signing
+      TargetKeyId: !Ref SigningKey
+
   GateLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -56,6 +74,10 @@ Resources:
           ANTARES_ALLOWED_TABLES: antares-dev-main,antares-dev-ledger
           ANTARES_ALLOWED_BUCKETS: antares-dev-vault
           ANTARES_SSM_PREFIX: /antares/dev/
+          ANTARES_REASONER_MODEL: us.amazon.nova-pro-v1:0
+          ANTARES_ADVERSARY_MODEL: us.meta.llama3-3-70b-instruct-v1:0
+          ANTARES_PERIMETER_MODEL: us.amazon.nova-lite-v1:0
+          ANTARES_SIGNING_KEY_ID: !Ref SigningKeyAlias
           POWERTOOLS_SERVICE_NAME: antares-gate
           POWERTOOLS_METRICS_NAMESPACE: Antares
           LOG_LEVEL: INFO
@@ -68,6 +90,21 @@ Resources:
                 - dynamodb:Query
               Resource: !GetAtt MainTable.Arn
         - AWSXRayDaemonWriteAccess
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+              Resource:
+                - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-pro-v1:0"
+                - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-lite-v1:0"
+                - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-micro-v1:0"
+                - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/meta.llama3-3-70b-instruct-v1:0"
+                - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/*"
+            - Effect: Allow
+              Action:
+                - kms:GenerateMac
+                - kms:VerifyMac
+              Resource: !GetAtt SigningKey.Arn
 
   Api:
     Type: AWS::ApiGateway::RestApi

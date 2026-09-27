@@ -57,11 +57,15 @@ class TestAllowPath:
         assert outcome.result.code_blocked is False
 
     def test_clean_write_allows(self) -> None:
-        outcome = _outcome("ledger.update_item", "dynamodb:UpdateItem", {
-            "table": "antares-dev-ledger",
-            "key": {"pk": "customer#4829"},
-            "update_expression": "SET tier = :t",
-        })
+        outcome = _outcome(
+            "ledger.update_item",
+            "dynamodb:UpdateItem",
+            {
+                "table": "antares-dev-ledger",
+                "key": {"pk": "customer#4829"},
+                "update_expression": "SET tier = :t",
+            },
+        )
         assert outcome.state is VerdictState.ALLOW
 
     def test_gate_is_fast(self) -> None:
@@ -85,22 +89,32 @@ class TestVeto:
         assert any(f.rule_id == "GATE-SCH-001" for f in outcome.result.findings)
 
     def test_unknown_parameter_blocks(self) -> None:
-        outcome = _outcome("ledger.describe", "dynamodb:DescribeTable",
-                           {"table": "antares-dev-ledger", "force": True})
+        outcome = _outcome(
+            "ledger.describe",
+            "dynamodb:DescribeTable",
+            {"table": "antares-dev-ledger", "force": True},
+        )
         assert outcome.state is VerdictState.HARD_BLOCK
 
     def test_shell_metacharacter_blocks(self) -> None:
-        outcome = _outcome("ledger.update_item", "dynamodb:UpdateItem", {
-            "table": "antares-dev-ledger",
-            "key": {"pk": "a"},
-            "update_expression": "SET tier = :v && tier2 = :w",
-        })
+        outcome = _outcome(
+            "ledger.update_item",
+            "dynamodb:UpdateItem",
+            {
+                "table": "antares-dev-ledger",
+                "key": {"pk": "a"},
+                "update_expression": "SET tier = :v && tier2 = :w",
+            },
+        )
         assert outcome.state is VerdictState.HARD_BLOCK
         assert any(f.rule_id == "GATE-SHL-001" for f in outcome.result.findings)
 
     def test_destructive_pattern_blocks(self) -> None:
-        outcome = _outcome("vault.put_object", "s3:PutObject",
-                           {"bucket": "antares-dev-vault", "key": "notes/rm -rf.txt"})
+        outcome = _outcome(
+            "vault.put_object",
+            "s3:PutObject",
+            {"bucket": "antares-dev-vault", "key": "notes/rm -rf.txt"},
+        )
         assert outcome.state is VerdictState.HARD_BLOCK
         assert any(f.rule_id == "GATE-SHL-002" for f in outcome.result.findings)
 
@@ -110,17 +124,24 @@ class TestVeto:
         assert any(f.rule_id == "GATE-ARN-001" for f in outcome.result.findings)
 
     def test_ssm_outside_prefix_blocks(self) -> None:
-        outcome = _outcome("config.put_parameter", "ssm:PutParameter",
-                           {"name": "/production/payments/endpoint", "value": "https://x"})
+        outcome = _outcome(
+            "config.put_parameter",
+            "ssm:PutParameter",
+            {"name": "/production/payments/endpoint", "value": "https://x"},
+        )
         assert outcome.state is VerdictState.HARD_BLOCK
         assert any(f.rule_id == "GATE-ARN-001" for f in outcome.result.findings)
 
     def test_stack_of_blocks_reports_all(self) -> None:
-        outcome = _outcome("ledger.update_item", "dynamodb:UpdateItem", {
-            "table": "prod-customers",
-            "key": {"pk": "a"},
-            "update_expression": "SET tier = :v && x = :y",
-        })
+        outcome = _outcome(
+            "ledger.update_item",
+            "dynamodb:UpdateItem",
+            {
+                "table": "prod-customers",
+                "key": {"pk": "a"},
+                "update_expression": "SET tier = :v && x = :y",
+            },
+        )
         rules = {f.rule_id for f in outcome.result.findings}
         assert {"GATE-ARN-001", "GATE-SHL-001"} <= rules
         assert outcome.result.code_blocked is True
@@ -128,8 +149,11 @@ class TestVeto:
 
 class TestEscalation:
     def test_clean_destroy_abstains_pending_quorum(self) -> None:
-        outcome = _outcome("ledger.delete_item", "dynamodb:DeleteItem",
-                           {"table": "antares-dev-ledger", "key": {"pk": "customer#4829"}})
+        outcome = _outcome(
+            "ledger.delete_item",
+            "dynamodb:DeleteItem",
+            {"table": "antares-dev-ledger", "key": {"pk": "customer#4829"}},
+        )
         assert outcome.state is VerdictState.ABSTAIN
         assert any(f.rule_id == "GATE-ESC-001" for f in outcome.result.findings)
 
