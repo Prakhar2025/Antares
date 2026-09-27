@@ -311,6 +311,100 @@ Resources:
         IntegrationHttpMethod: POST
         Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
 
+  ApiActionsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !Ref ApiV1Resource
+      PathPart: actions
+
+  ApiActionIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !Ref ApiActionsResource
+      PathPart: "{id}"
+
+  ApiRollbackResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !Ref ApiActionIdResource
+      PathPart: rollback
+
+  RollbackMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiRollbackResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
+
+  ApiReceiptResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !Ref ApiActionIdResource
+      PathPart: receipt
+
+  ReceiptMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiReceiptResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
+
+  ApiMetricsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !Ref ApiV1Resource
+      PathPart: metrics
+
+  MetricsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiMetricsResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
+
+  ApiAttacksResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !Ref ApiV1Resource
+      PathPart: attacks
+
+  AttacksMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiAttacksResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
+
   ApiDecisionIdResource:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -364,6 +458,10 @@ Resources:
       - CheckMethod
       - IncidentsMethod
       - ExecuteMethod
+      - RollbackMethod
+      - ReceiptMethod
+      - MetricsMethod
+      - AttacksMethod
     Properties:
       RestApiId: !Ref Api
 

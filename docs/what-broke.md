@@ -99,3 +99,9 @@ Root cause: DynamoDB transactions forbid two operations on the same item key, an
 Fix: single-item conditional writes: the execute marker and the ledger head are one conditional put each; single-use bypass enforcement lives on the verdict item via a conditional update, with the redemption record written separately.
 Prevention: transaction design rule added to doc 14: a transaction never contains two operations on the same key; conditional single-item writes are the default for markers.
 Phase: gate (reversal bring-up)
+## [2026-09-27] the ledger head put carried an untyped value
+Symptom: live execute failed with LedgerForkError; the underlying error was ParamValidationError "Invalid type for parameter Item.ts, value: debug, type: str".
+Root cause: the head-advance put wrote ts as a plain string while DynamoDB requires every Item value typed; the fake accepted plain values, so unit tests stayed green while live calls failed twice.
+Fix: ts typed as {"S": ...}; every Item value audited for typing.
+Prevention: the fake validates that every Item value is a typed dict and fails the test the moment it is not; live smoke remains the second gate.
+Phase: gate (reversal bring-up)

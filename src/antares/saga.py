@@ -168,11 +168,9 @@ class SagaEngine:
         if action == "dynamodb:DescribeTable":
             return self.ddb.describe_table(TableName=params["table"])
         if action == "dynamodb:PutItem":
-            return self.ddb.put_item(
-                TableName=params["table"],
-                Item=_to_typed(params["item"]),
-                ConditionExpression="attribute_not_exists(pk) OR attribute_not_exists(sk)",
-            )
+            # Idempotent overwrite: the vault holds the prior state, so a
+            # re-execution is still reversible (no reject-on-exists gate).
+            return self.ddb.put_item(TableName=params["table"], Item=_to_typed(params["item"]))
         if action == "dynamodb:UpdateItem":
             return self.ddb.update_item(
                 TableName=params["table"],

@@ -65,7 +65,7 @@ class Ledger:
                         "leaf_hash": {"S": leaf},
                         "prev_leaf_hash": {"S": head["leaf_hash"]},
                         "height": {"N": str(head["height"] + 1)},
-                        "ts": record.get("ts", ""),
+                        "ts": {"S": record.get("ts", "")},
                     },
                     ConditionExpression=("attribute_not_exists(pk) OR leaf_hash = :expected"),
                     ExpressionAttributeValues={":expected": {"S": head["leaf_hash"]}},

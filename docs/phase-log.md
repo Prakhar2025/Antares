@@ -28,3 +28,13 @@
 - Canary tripwire live: canary created, echoed output fired TRIPWIRE_FIRE, incident visible in the feed
 - Bypass flow: ABSTAIN verdicts issue a KMS-signed single-use 60-second token in the x-antares-bypass-token response header; redemption, replay rejection and incident recording are covered by unit tests (live ABSTAIN is model-dependent)
 - Escalated-call latency measured 596 to 940 ms against the doc 17 escalated budget of 3.5 s p95: **met**
+
+## Reversal milestone evidence (2026-09-27)
+
+- Blast-radius probes live: mutating calls measure live state before executing (item existence, table counts, PITR status, S3 versioning, SSM existence); unknown radius escalates to max severity
+- Full saga cycle demonstrated live on the real stack: gated DELETE of customer#4829 (quorum votes 0.0 adversary / 0.3 reasoner, radius 0.5) executed, item removed from the live table, then ROLLBACK restored it with byte-identity verified and tier ENTERPRISE confirmed by a direct AWS read
+- Merkle receipts live: action and rollback records chained (leaf 84d069bc chained to prev 382da0b3); client-side verification rule published
+- Metrics endpoint live: per-day counters (12 verdicts on day one)
+- Attack library endpoint live: 16 named signature classes
+- Deployment pipeline hardened: bundle verification assert, automatic API restage on every deploy, pip index pinned away from the machine's broken mirror, quoted interpreter paths
+- What-broke ledger grew by five entries; every one carries a prevention rule

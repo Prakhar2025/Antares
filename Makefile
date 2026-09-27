@@ -13,16 +13,16 @@ STACK := antares-dev
 REGION := us-east-1
 
 install:
-	$(PY) -m pip install -e ".[dev]"
+	"$(PY)" -m pip install -e ".[dev]"
 
 lint:
-	$(PY) -m ruff check .
+	"$(PY)" -m ruff check .
 
 type:
-	$(PY) -m mypy src
+	"$(PY)" -m mypy src
 
 test:
-	$(PY) -m pytest --cov=src/antares --cov-fail-under=90
+	"$(PY)" -m pytest --cov=src/antares --cov-fail-under=90
 
 gates: lint type test
 
@@ -32,7 +32,7 @@ gates: lint type test
 build:
 	rm -rf .aws-build
 	mkdir -p .aws-build
-	$(PY) -m pip install --platform manylinux2014_aarch64 --implementation cp --python-version 3.12 --only-binary=:all: -r requirements.txt -t .aws-build
+	PIP_INDEX_URL="https://pypi.org/simple" PIP_EXTRA_INDEX_URL="https://pypi.org/simple" "$(PY)" -m pip install --platform manylinux2014_aarch64 --implementation cp --python-version 3.12 --only-binary=:all: -r requirements.txt -t .aws-build
 	rm -rf .aws-build/boto3 .aws-build/botocore .aws-build/boto3-*.dist-info .aws-build/botocore-*.dist-info
 	cp -r src/antares .aws-build/antares
 	"$(PY)" -c "import io; s = io.open('.aws-build/antares/handlers/gate_handler.py', encoding='utf-8').read(); assert 'bedrock-runtime' in s, 'stale bundle: handler missing bedrock wiring'"
@@ -41,4 +41,5 @@ package: build
 	aws cloudformation package --template-file infra/template.yaml --s3-bucket $(BUCKET) --s3-prefix antares-dev --output-template .aws-build/packaged.yaml --region $(REGION)
 
 deploy: package
-	aws cloudformation deploy --template-file .aws-build/packaged.yaml --stack-name $(STACK) --capabilities CAPABILITY_IAM --region $(REGION) --tags Project=Antares Env=dev ManagedBy=cloudformation --no-fail-on-empty-changeset
+	aws cloudformation deploy --template-file .aws-build/packaged.yaml --stack-name $(STACK) --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND --region $(REGION) --tags Project=Antares Env=dev ManagedBy=cloudformation --no-fail-on-empty-changeset
+	aws apigateway create-deployment --rest-api-id $$(aws cloudformation describe-stacks --stack-name $(STACK) --region $(REGION) --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text | sed "s|https://||; s|\.execute-api.*||") --stage-name dev --region $(REGION) --output text
