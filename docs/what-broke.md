@@ -105,3 +105,24 @@ Root cause: the head-advance put wrote ts as a plain string while DynamoDB requi
 Fix: ts typed as {"S": ...}; every Item value audited for typing.
 Prevention: the fake validates that every Item value is a typed dict and fails the test the moment it is not; live smoke remains the second gate.
 Phase: gate (reversal bring-up)
+
+## [2026-09-27] the account early-validation hook rejects the CloudFront OAC resource
+Symptom: adding AWS::CloudFront::OriginAccessControl failed every deploy with EarlyValidation PropertyValidation; the identical resource type deploys in other accounts.
+Root cause: account-level early-validation hook constraint (same family as the GSI rejection); bisected through probe stacks: distribution without OAC passed, OAC resource alone failed.
+Fix: classic pattern instead: site bucket with a read-only public policy plus CloudFront S3 origin, no OAC.
+Prevention: before adopting an AWS resource type in this account, probe-stack it first; the hook rejects standard resources non-deterministically across types (GSIs, OAC).
+Phase: gate (console bring-up)
+
+## [2026-09-27] mock integrations 500 without a request template
+Symptom: OPTIONS preflight returned 500 through the stage while test-invoke-method returned 200.
+Root cause: MOCK integrations need at least a default RequestTemplates entry; without one the integration fails at request time.
+Fix: RequestTemplates application/json added to all eight OPTIONS mocks.
+Prevention: integration smoke through the stage (not just test-invoke) after every API change.
+Phase: gate (console bring-up)
+
+## [2026-09-27] S3 sync on Windows produced backslash keys and subdirectory 403s
+Symptom: /console returned 403 through CloudFront while / returned 200.
+Root cause: aws s3 sync from a Windows console wrote nested objects under backslash-joined keys; CloudFront requested forward-slash keys that did not exist. Also: S3 behind a REST-origin CloudFront does not auto-resolve subdirectory index documents.
+Fix: trailingSlash build mode plus a CloudFront viewer-request function that appends index.html to clean URLs.
+Prevention: static-site deploys on Windows are verified with a full page fetch, not a sync success message; URL rewriting is handled by a function, never by S3 defaults.
+Phase: gate (console bring-up)

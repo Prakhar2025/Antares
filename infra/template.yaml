@@ -1,14 +1,22 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  Antares dev namespace (P1): gate API and decision store.
-  Least-privilege by construction: the only writable resource is the
-  antares-dev-main table. No NAT, no always-on compute, no Bedrock in P1.
-  Single-table dual-write pattern: no GSIs (the account-level
-  early-validation hook rejects GSI creation; recorded in what-broke).
-  The API is expressed as raw API Gateway resources with explicit
-  DependsOn ordering, because SAM's implicit stage ordering raced the
-  usage plan (also recorded in what-broke).
+  Antares dev namespace: gate API, decision store, console site.
+  Least-privilege by construction: the executor touches only the sandbox
+  resources. No NAT, no always-on compute. Single-table dual-write pattern
+  (no GSIs: the account early-validation hook rejects GSI creation, doc 06
+  and what-broke). CloudFront serves the console and proxies /v1/* to the
+  regional API same-origin; the OAC resource is blocked by the same hook,
+  so the site bucket uses a read-only public policy (what-broke).
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures:
+      - arm64
+    MemorySize: 256
+    Timeout: 15
+    Tracing: Active
 
 Resources:
   MainTable:
@@ -30,24 +38,6 @@ Resources:
       Tags:
         - { Key: Project, Value: Antares }
         - { Key: Env, Value: dev }
-
-  SigningKey:
-    Type: AWS::KMS::Key
-    Properties:
-      Description: Antares bypass token signing (HMAC_SHA_256, doc 05 section 5)
-      KeySpec: HMAC_256
-      KeyUsage: GENERATE_VERIFY_MAC
-      Enabled: true
-      PendingWindowInDays: 7
-      Tags:
-        - { Key: Project, Value: Antares }
-        - { Key: Env, Value: dev }
-
-  SigningKeyAlias:
-    Type: AWS::KMS::Alias
-    Properties:
-      AliasName: alias/antares-dev-signing
-      TargetKeyId: !Ref SigningKey
 
   DemoLedgerTable:
     Type: AWS::DynamoDB::Table
@@ -91,6 +81,48 @@ Resources:
         Project: Antares
         Env: dev
 
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: antares-dev-site
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+      Tags:
+        - { Key: Project, Value: Antares }
+        - { Key: Env, Value: dev }
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub "${SiteBucket.Arn}/*"
+
+  SigningKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Antares bypass token signing (HMAC_SHA_256, doc 05 section 5)
+      KeySpec: HMAC_256
+      KeyUsage: GENERATE_VERIFY_MAC
+      Enabled: true
+      PendingWindowInDays: 7
+      Tags:
+        - { Key: Project, Value: Antares }
+        - { Key: Env, Value: dev }
+
+  SigningKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/antares-dev-signing
+      TargetKeyId: !Ref SigningKey
+
   GateLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -105,14 +137,15 @@ Resources:
       Runtime: python3.12
       Handler: antares.handlers.gate_handler.handler
       MemorySize: 256
-      Timeout: 10
+      Timeout: 15
       Architectures:
         - arm64
+      Tracing: Active
       Environment:
         Variables:
           ANTARES_TABLE_NAME: antares-dev-main
           ANTARES_HALT: "false"
-          ANTARES_POLICY_VERSION: p1
+          ANTARES_POLICY_VERSION: 1.0
           ANTARES_ALLOWED_TABLES: antares-dev-main,antares-dev-ledger
           ANTARES_ALLOWED_BUCKETS: antares-dev-vault
           ANTARES_SSM_PREFIX: /antares/dev/
@@ -156,14 +189,10 @@ Resources:
                 - ssm:GetParameter
                 - ssm:PutParameter
               Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/antares/dev/*"
-        - AWSXRayDaemonWriteAccess
-        - Statement:
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
               Resource:
-                # Regional inference profiles route across regions: the model
-                # family is scoped, the region is wildcarded by design.
                 - !Sub "arn:aws:bedrock:*::foundation-model/amazon.nova-pro-v1:0"
                 - !Sub "arn:aws:bedrock:*::foundation-model/amazon.nova-lite-v1:0"
                 - !Sub "arn:aws:bedrock:*::foundation-model/amazon.nova-micro-v1:0"
@@ -174,6 +203,79 @@ Resources:
                 - kms:GenerateMac
                 - kms:VerifyMac
               Resource: !GetAtt SigningKey.Arn
+            - Effect: Allow
+              Action:
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: !GetAtt GateLogGroup.Arn
+        - AWSXRayDaemonWriteAccess
+      Events:
+        Gate:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/gate
+            Method: post
+        Screen:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/screen
+            Method: post
+        Canaries:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/canaries
+            Method: post
+        TripwireCheck:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/tripwire/check
+            Method: post
+        Incidents:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/incidents
+            Method: get
+        Metrics:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/metrics
+            Method: get
+        Attacks:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/attacks
+            Method: get
+        Decision:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/decisions/{id}
+            Method: get
+        Execute:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/execute
+            Method: post
+        Rollback:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/actions/{id}/rollback
+            Method: post
+        Receipt:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /v1/actions/{id}/receipt
+            Method: get
 
   Api:
     Type: AWS::ApiGateway::RestApi
@@ -197,12 +299,18 @@ Resources:
       ParentId: !Ref ApiV1Resource
       PathPart: gate
 
-  ApiDecisionsResource:
-    Type: AWS::ApiGateway::Resource
+  GateMethod:
+    Type: AWS::ApiGateway::Method
     Properties:
       RestApiId: !Ref Api
-      ParentId: !Ref ApiV1Resource
-      PathPart: decisions
+      ResourceId: !Ref ApiGateResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
 
   ApiScreenResource:
     Type: AWS::ApiGateway::Resource
@@ -218,7 +326,7 @@ Resources:
       ResourceId: !Ref ApiScreenResource
       HttpMethod: POST
       AuthorizationType: NONE
-      ApiKeyRequired: true
+      ApiKeyRequired: false
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
@@ -238,7 +346,7 @@ Resources:
       ResourceId: !Ref ApiCanariesResource
       HttpMethod: POST
       AuthorizationType: NONE
-      ApiKeyRequired: true
+      ApiKeyRequired: false
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
@@ -265,7 +373,7 @@ Resources:
       ResourceId: !Ref ApiCheckResource
       HttpMethod: POST
       AuthorizationType: NONE
-      ApiKeyRequired: true
+      ApiKeyRequired: false
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
@@ -285,11 +393,286 @@ Resources:
       ResourceId: !Ref ApiIncidentsResource
       HttpMethod: GET
       AuthorizationType: NONE
-      ApiKeyRequired: true
+      ApiKeyRequired: false
       Integration:
         Type: AWS_PROXY
         IntegrationHttpMethod: POST
         Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
+
+  ApiMetricsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !Ref ApiV1Resource
+      PathPart: metrics
+
+  MetricsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiMetricsResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
+
+  ApiAttacksResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !Ref ApiV1Resource
+      PathPart: attacks
+
+  AttacksMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiAttacksResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
+
+  ApiDecisionsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !Ref ApiV1Resource
+      PathPart: decisions
+
+  ApiDecisionIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !Ref ApiDecisionsResource
+      PathPart: "{id}"
+
+  DecisionMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiDecisionIdResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
+
+
+  GateResourceOptions:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiGateResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: "200"
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Api-Key'"
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
+
+
+  ScreenResourceOptions:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiScreenResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: "200"
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Api-Key'"
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
+
+
+  CanariesResourceOptions:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiCanariesResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: "200"
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Api-Key'"
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
+
+
+  CheckResourceOptions:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiCheckResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: "200"
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Api-Key'"
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
+
+
+  IncidentsResourceOptions:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiIncidentsResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: "200"
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Api-Key'"
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
+
+
+  MetricsResourceOptions:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiMetricsResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: "200"
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Api-Key'"
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
+
+
+  AttacksResourceOptions:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiAttacksResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: "200"
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Api-Key'"
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
+
+
+  DecisionIdResourceOptions:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiDecisionIdResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Integration:
+        Type: MOCK
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        IntegrationResponses:
+          - StatusCode: "200"
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Api-Key'"
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Headers: true
 
   ApiExecuteResource:
     Type: AWS::ApiGateway::Resource
@@ -365,81 +748,6 @@ Resources:
         IntegrationHttpMethod: POST
         Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
 
-  ApiMetricsResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref Api
-      ParentId: !Ref ApiV1Resource
-      PathPart: metrics
-
-  MetricsMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref Api
-      ResourceId: !Ref ApiMetricsResource
-      HttpMethod: GET
-      AuthorizationType: NONE
-      ApiKeyRequired: true
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
-
-  ApiAttacksResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref Api
-      ParentId: !Ref ApiV1Resource
-      PathPart: attacks
-
-  AttacksMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref Api
-      ResourceId: !Ref ApiAttacksResource
-      HttpMethod: GET
-      AuthorizationType: NONE
-      ApiKeyRequired: true
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
-
-  ApiDecisionIdResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref Api
-      ParentId: !Ref ApiDecisionsResource
-      PathPart: "{id}"
-
-  GateMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref Api
-      ResourceId: !Ref ApiGateResource
-      HttpMethod: POST
-      AuthorizationType: NONE
-      ApiKeyRequired: true
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
-
-  DecisionMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref Api
-      ResourceId: !Ref ApiDecisionIdResource
-      HttpMethod: GET
-      AuthorizationType: NONE
-      ApiKeyRequired: true
-      RequestParameters:
-        method.request.path.id: true
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
-
   GateInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -460,6 +768,14 @@ Resources:
       - ExecuteMethod
       - RollbackMethod
       - ReceiptMethod
+      - GateResourceOptions
+      - ScreenResourceOptions
+      - CanariesResourceOptions
+      - CheckResourceOptions
+      - IncidentsResourceOptions
+      - MetricsResourceOptions
+      - AttacksResourceOptions
+      - DecisionIdResourceOptions
       - MetricsMethod
       - AttacksMethod
     Properties:
@@ -472,22 +788,28 @@ Resources:
       DeploymentId: !Ref ApiDeployment
       StageName: dev
       TracingEnabled: true
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          ThrottlingRateLimit: 10
+          ThrottlingBurstLimit: 20
       Tags:
         - { Key: Project, Value: Antares }
         - { Key: Env, Value: dev }
 
   ApiKey:
     Type: AWS::ApiGateway::ApiKey
-    DependsOn: ApiStage
     Properties:
       Name: antares-dev-key
       Enabled: true
       StageKeys:
         - { RestApiId: !Ref Api, StageName: dev }
+      Tags:
+        - { Key: Project, Value: Antares }
+        - { Key: Env, Value: dev }
 
   UsagePlan:
     Type: AWS::ApiGateway::UsagePlan
-    DependsOn: ApiStage
     Properties:
       UsagePlanName: antares-dev-plan
       ApiStages:
@@ -506,13 +828,55 @@ Resources:
       KeyType: API_KEY
       UsagePlanId: !Ref UsagePlan
 
+
+  ConsoleIndexFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: antares-console-index
+      AutoPublish: true
+      FunctionConfig:
+        Comment: resolve clean URLs to index.html
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+          if (uri.endsWith("/")) {
+            request.uri = uri + "index.html";
+          } else if (!uri.split(".").pop().match(/^(html|js|css|txt|json|svg|png|jpg|woff2?|map|ico)$/)) {
+            request.uri = uri + "/index.html";
+          }
+          return request;
+        }
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: Antares console and API proxy
+        DefaultRootObject: index.html
+        HttpVersion: http2
+        Origins:
+          - Id: site-origin
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: site-origin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          Compress: true
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt ConsoleIndexFunction.FunctionMetadata.FunctionARN
+
 Outputs:
+  PublicUrl:
+    Value: !Sub "https://${Distribution.DomainName}"
   ApiUrl:
-    Description: Dev gate API base URL
+    Description: Direct regional API (API-key gated for destructive routes)
     Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/dev"
-  ApiKeyId:
-    Description: API key id (fetch the value with apigateway get-api-key)
-    Value: !Ref ApiKey
   TableName:
     Description: Decision store table
     Value: antares-dev-main

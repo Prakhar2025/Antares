@@ -38,3 +38,11 @@
 - Attack library endpoint live: 16 named signature classes
 - Deployment pipeline hardened: bundle verification assert, automatic API restage on every deploy, pip index pinned away from the machine's broken mirror, quoted interpreter paths
 - What-broke ledger grew by five entries; every one carries a prevention rule
+
+## Console milestone evidence (2026-09-27)
+
+- Ship-gate public URL live: https://d3jhd66xz9xj9.cloudfront.net (verify the exact id against the stack output; console at /console)
+- Zero-login judge path proven: landing 200, console 200, CORS preflight 200, gate POST 200 from the site origin
+- The console dispatcher runs four preset scenarios against the real stack: benign ops (ALLOW, gate 0-1 ms), clean write (ALLOW with live quorum votes), poisoned write (HARD_BLOCK, perimeter OVR-001 plus quorum conviction), destructive delete (ABSTAIN or ALLOW by quorum judgment)
+- Deployment pipeline: static export built with the API URL baked in, synced to the site bucket, CloudFront with index-resolution function, automatic restage on deploy
+- What-broke ledger: OAC resource rejected by the account early-validation hook (bisected via probe stacks; classic public-read bucket policy adopted), mock integrations need request templates (mock 500 lesson), S3 sync backslash keys verified clean
