@@ -13,3 +13,5 @@ build/
 .zcodeignore
 .aws-build/
 .coverage
+console/out/
+scripts/cfprobe/
