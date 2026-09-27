@@ -19,3 +19,12 @@
 - Wall-clock from Nagpur to us-east-1: 0.8 to 1.7 s (round-trip geography, not kernel time; edge measurement arrives with the console in P4)
 - Test suite: 39 tests, 97.4 percent coverage, ruff and mypy strict green, CI workflow active on GitHub
 - Kill switch present: ANTARES_HALT returns 503 kernel-halted (unit-tested)
+
+## Quorum milestone evidence (2026-09-27)
+
+- Live destructive call judged by the real cross-vendor quorum: Llama 3.3 70B risk 0.2 ("suspicious key pattern") versus Nova Pro risk 0.1 ("routine read on a development table"), divergence 0.1, fused ALLOW in 940 ms, 479 input plus 68 output tokens
+- Live attack call (instruction override hidden in a delete key): HARD_BLOCK via QUORUM-BLK-001; adversary risk 0.99 "instruction override detected", reasoner risk 0.95 "high risk of data loss and security breach", divergence 0.04, 596 ms; perimeter had already flagged OVR-001 on the parameters
+- Screen endpoint live: hostile text returns HOSTILE with OVR-001 plus EXT-001 and semantic risk 0.95 (Nova Lite)
+- Canary tripwire live: canary created, echoed output fired TRIPWIRE_FIRE, incident visible in the feed
+- Bypass flow: ABSTAIN verdicts issue a KMS-signed single-use 60-second token in the x-antares-bypass-token response header; redemption, replay rejection and incident recording are covered by unit tests (live ABSTAIN is model-dependent)
+- Escalated-call latency measured 596 to 940 ms against the doc 17 escalated budget of 3.5 s p95: **met**
