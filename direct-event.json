@@ -1,0 +1,1 @@
+{"body":"{\"call_id\":\"direct-1\",\"tool\":\"ledger.delete_item\",\"action\":\"dynamodb:DeleteItem\",\"params\":{\"table\":\"antares-dev-ledger\",\"key\":{\"pk\":\"c1\"}},\"session\":{\"session_id\":\"session-direct-1\"},\"requested_by\":\"test\"}","httpMethod":"POST","path":"/v1/gate"}

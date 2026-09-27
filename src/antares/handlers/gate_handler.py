@@ -23,6 +23,8 @@ metrics = Metrics(namespace="Antares", service="gate")
 _policy = Policy.from_env()
 _registry = build_default_registry()
 _ddb = boto3.client("dynamodb")
+_bedrock = boto3.client("bedrock-runtime")
+_kms = boto3.client("kms")
 _halt = os.environ.get("ANTARES_HALT", "false").lower() == "true"
 
 app = create_app(
@@ -32,6 +34,9 @@ app = create_app(
     table_name=os.environ["ANTARES_TABLE_NAME"],
     halt=_halt,
     metrics=metrics,
+    bedrock=_bedrock,
+    kms=_kms,
+    signing_key_id=os.environ.get("ANTARES_SIGNING_KEY_ID"),
 )
 
 

@@ -143,12 +143,20 @@ def run_quorum(
     reasoner_user = _reasoner_user(call_json_str, perimeter_findings, audit_ref)
     adversary_user = _adversary_user(call_json_str, perimeter_findings, audit_ref)
 
+    def _safe_vote(
+        model_id: str, system: str, user: str
+    ) -> tuple[dict[str, Any] | None, dict[str, int], str | None]:
+        try:
+            return _vote(bedrock, model_id, system, user)
+        except Exception as error:  # noqa: BLE001  (fail loud becomes abstain, doc 04)
+            return None, {"input": 0, "output": 0}, f"bedrock error: {str(error)[:150]}"
+
     with ThreadPoolExecutor(max_workers=2) as pool:
         reasoner_future = pool.submit(
-            _vote, bedrock, policy.reasoner_model_id, REASONER_SYSTEM, reasoner_user
+            _safe_vote, policy.reasoner_model_id, REASONER_SYSTEM, reasoner_user
         )
         adversary_future = pool.submit(
-            _vote, bedrock, policy.adversary_model_id, ADVERSARY_SYSTEM, adversary_user
+            _safe_vote, policy.adversary_model_id, ADVERSARY_SYSTEM, adversary_user
         )
         reasoner_vote, reasoner_tokens, reasoner_error = reasoner_future.result()
         adversary_vote, adversary_tokens, adversary_error = adversary_future.result()

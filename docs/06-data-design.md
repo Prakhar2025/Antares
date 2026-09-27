@@ -43,5 +43,6 @@ No agent conversation transcripts, no user identifiers, no real customer data. T
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.3 | 2026-09-27 | Quorum milestone: bypass marker items (pk = BYPASS#{hash}) with conditional single-use redemption; canary and incident item shapes; incidents feed at pk = INCIDENTS. |
 | 0.2 | 2026-09-27 | P1 build: GSIs replaced by the dual-write lookup and feed pattern after the account early-validation hook rejected GSI creation (what-broke). |
 | 0.1 | 2026-09-27 | Initial draft for owner review. |

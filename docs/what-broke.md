@@ -63,3 +63,15 @@ Root cause: two layers. The deployed artifact was stale relative to the fixed bu
 Fix: fresh package discipline (repackage immediately before every deploy) plus aws-xray-sdk pinned in pyproject and requirements.
 Prevention: smoke test is a gate, not a celebration: every deploy ends with a live verdict check before the phase is called done. Tracer's dependency is declared, not assumed.
 Phase: P1 (deploy)
+## [2026-09-27] regional inference profiles route across regions and broke region-scoped IAM
+Symptom: first live quorum call failed with AccessDeniedException on arn:aws:bedrock:us-west-2::foundation-model/... while IAM allowed only us-east-1; the whole gate 500-ed.
+Root cause: the us. inference profiles route to any US region, so model ARNs materialize in other regions; IAM scoped to ${AWS::Region} cannot see them. Second layer: the quorum let the Bedrock exception escape, converting a policy problem into a handler 500.
+Fix: model-family ARNs wildcard the region (arn:aws:bedrock:*::foundation-model/...) while staying scoped to exactly the four model families in use; the quorum wraps every vote and degrades to ABSTAIN with a named finding (doc 04 failure matrix).
+Prevention: inference-profile IAM is scoped per model family across regions, never per region; every model call sits inside the failure matrix, never inside the request path bare.
+Phase: gate (quorum bring-up)
+## [2026-09-27] API Gateway served stale routes and the bundle shipped a stale handler
+Symptom: new endpoints (/v1/screen, /v1/canaries, /v1/tripwire, /v1/incidents) returned Missing Authentication Token; then the live quorum call ran without the quorum while the deployed zip contained the new gateway but the old handler.
+Root cause: two independent staleness bugs. AWS::ApiGateway::Deployment does not re-stage when new Methods are added; and the build bundle had been assembled before the handler rewrite, so the artifact lagged the source.
+Fix: new Methods added as raw resources with explicit DependsOn into the Deployment; a bundle verification assert (handler must carry the bedrock wiring) runs inside the build target; the deploy target now restages the API automatically.
+Prevention: never trust a successful deploy to mean the artifact is fresh; the deploy pipeline verifies bundle contents and restages, and the smoke battery exercises every new route immediately after.
+Phase: gate (quorum bring-up)
