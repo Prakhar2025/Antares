@@ -142,11 +142,15 @@ class TestQuorumDivergenceRoute:
 class TestLedgerFork:
     def test_fork_raises_ledger_fork_error(self) -> None:
         class RacingWorld(FakeWorldDynamo):
-            # ClientError imported at module top (botocore).
             """Head item always exists with an unexpected leaf: forces fork."""
 
-            def put_item(self, TableName: str, Item: dict, ConditionExpression: str | None = None,
-                         ExpressionAttributeValues: dict | None = None) -> dict:  # noqa: N803
+            def put_item(
+                self,
+                TableName: str,
+                Item: dict,
+                ConditionExpression: str | None = None,
+                ExpressionAttributeValues: dict | None = None,
+            ) -> dict:  # noqa: N803
                 # The head always moved: every conditional head put fails.
                 raise ClientError({"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem")
 

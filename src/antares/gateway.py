@@ -431,43 +431,39 @@ def create_app(
             return problem(403, "bypass-invalid", "Bypass rejected", reason)
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         try:
-            ddb.transact_write_items(
-                TransactItems=[
-                    {
-                        "ConditionCheck": {
-                            "TableName": table_name,
-                            "ConditionExpression": "attribute_not_exists(pk)",
-                            "Key": {"pk": {"S": f"BYPASS#{token_hash}"}, "sk": {"S": "USED"}},
-                        }
-                    },
-                    {
-                        "Put": {
-                            "TableName": table_name,
-                            "Item": {
-                                "pk": {"S": f"BYPASS#{token_hash}"},
-                                "sk": {"S": "USED"},
-                                "verdict_id": {"S": verdict_id},
-                                "used_at": {"S": datetime.now(UTC).isoformat()},
-                            },
-                        }
-                    },
-                    {
-                        "Update": {
-                            "TableName": table_name,
-                            "Key": {"pk": {"S": f"VERDICT#{verdict_id}"}, "sk": {"S": "META"}},
-                            "UpdateExpression": "SET bypassed = :b",
-                            "ExpressionAttributeValues": {":b": {"BOOL": True}},
-                        }
-                    },
-                ]
+            # single-use enforced on the verdict item: one conditional update
+            ddb.update_item(
+                TableName=table_name,
+                Key={"pk": {"S": f"VERDICT#{verdict_id}"}, "sk": {"S": "META"}},
+                UpdateExpression="SET #st = :b, #sh = :h, #st_used = :t",
+                ConditionExpression="attribute_not_exists(#st)",
+                ExpressionAttributeNames={
+                    "#st": "bypassed",
+                    "#sh": "bypass_hash",
+                    "#st_used": "bypass_used_at",
+                },
+                ExpressionAttributeValues={
+                    ":b": {"BOOL": True},
+                    ":h": {"S": token_hash},
+                    ":t": {"S": datetime.now(UTC).isoformat()},
+                },
             )
         except ClientError as error:
             if error.response.get("Error", {}).get("Code") in {
+                "ConditionalCheckFailedException",
                 "TransactionCanceledException",
-                "TransactionInProgressException",
             }:
                 return problem(403, "bypass-invalid", "Bypass rejected", "token already used")
             raise
+        ddb.put_item(
+            TableName=table_name,
+            Item={
+                "pk": {"S": f"BYPASS#{token_hash}"},
+                "sk": {"S": "USED"},
+                "verdict_id": {"S": verdict_id},
+                "used_at": {"S": datetime.now(UTC).isoformat()},
+            },
+        )
         incident_id = _record_incident("BYPASS_USED", {"verdict_id": verdict_id})
         return {
             "statusCode": 200,
@@ -625,31 +621,29 @@ def create_app(
         action = call["action"]
         params = call["params"]
         try:
-            ddb.transact_write_items(
-                TransactItems=[
-                    {
-                        "ConditionCheck": {
-                            "TableName": table_name,
-                            "ConditionExpression": "attribute_not_exists(pk)",
-                            "Key": {"pk": {"S": f"EXEC#{verdict_id}"}, "sk": {"S": "DONE"}},
-                        }
-                    },
-                    {
-                        "Put": {
-                            "TableName": table_name,
-                            "Item": {
-                                "pk": {"S": f"EXEC#{verdict_id}"},
-                                "sk": {"S": "DONE"},
-                                "executed_at": {"S": datetime.now(UTC).isoformat()},
-                            },
-                        }
-                    },
-                ]
+            # Single-item conditional put: atomic single-use marker. A
+            # transaction here would pair a ConditionCheck with a Put on the
+            # same key, which DynamoDB rejects (doc 14 lesson).
+            ddb.put_item(
+                TableName=table_name,
+                Item={
+                    "pk": {"S": f"EXEC#{verdict_id}"},
+                    "sk": {"S": "DONE"},
+                    "executed_at": {"S": datetime.now(UTC).isoformat()},
+                },
+                ConditionExpression="attribute_not_exists(pk)",
             )
-        except ClientError:
-            return problem(
-                403, "bypass-invalid", "Already executed", "this verdict was already executed"
+        except ClientError as error:
+            code = error.response.get("Error", {}).get("Code", "")
+            logger.warning(
+                "execute conditional put failed",
+                extra={"code": code, "detail": str(error)[:200]},
             )
+            if code == "ConditionalCheckFailedException":
+                return problem(
+                    403, "bypass-invalid", "Already executed", "this verdict was already executed"
+                )
+            return problem(500, "internal", "Execute failed", str(error)[:200])
         result = saga.execute(action, params, action_id=verdict_id)
         record = {
             "record_type": "action",

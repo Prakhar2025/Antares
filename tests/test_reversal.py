@@ -5,6 +5,7 @@ the exact operations the saga uses (doc 14: fakes mirror real shapes).
 """
 
 import json
+import re
 
 from botocore.exceptions import ClientError
 
@@ -79,11 +80,8 @@ class FakeWorldDynamo:
                 current["N"] = str(float(current.get("N", "0")) + addend_num)
             return {}
         if "SET" in expression:
-            for part in expression.split("SET", 1)[1].split(","):
-                attr_part, placeholder = part.strip().split(" = ", 1)
-                attr = attr_part.strip()
-                if attr.startswith("#"):
-                    attr = names.get(attr, attr).lstrip("#")
+            for target, placeholder in re.findall(r"(#?\w+)\s*=\s*(:\w+)", expression):
+                attr = names.get(target, target.lstrip("#"))
                 item[attr] = values[placeholder]
             return {}
 

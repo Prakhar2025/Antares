@@ -3,8 +3,10 @@
 import hashlib
 import hmac as hmac_lib
 import json
+import re
 
 import pytest
+from botocore.exceptions import ClientError
 
 from antares.gateway import create_app
 from antares.policy import Policy
@@ -17,6 +19,10 @@ class FakeDynamo:
     def __init__(self) -> None:
         self.items: dict[tuple[str, str], dict] = {}
         self.updates: list[dict] = []
+
+    @staticmethod
+    def _k(Item: dict) -> tuple[str, str]:  # noqa: N803
+        return (Item["pk"]["S"], Item["sk"]["S"])
 
     def transact_write_items(self, TransactItems: list) -> dict:  # noqa: N803
         for entry in TransactItems:
@@ -41,8 +47,42 @@ class FakeDynamo:
                     self.items[key]["bypassed"] = {"BOOL": True}
 
     def update_item(self, **kwargs: object) -> dict:
-        # ADD-expression counters: record the raw call for contract checks.
-        self.updates.append(kwargs)
+        expression = kwargs.get("UpdateExpression", "")
+        condition = kwargs.get("ConditionExpression", "")
+        values = kwargs.get("ExpressionAttributeValues", {})
+        names = kwargs.get("ExpressionAttributeNames", {})
+        key = self._k(kwargs["Key"])
+        item = self.items.get(key)
+        if item is None:
+            # ADD-style counter update creates the item (real DynamoDB does).
+            self.items[key] = {}
+            item = self.items[key]
+        resolved = re.findall(r"attribute_not_exists\((#?\w+)\)", condition)
+        protected = [names.get(token, token.lstrip("#")) for token in resolved]
+        if any(item.get(attr) is not None for attr in protected):
+            raise ClientError({"Error": {"Code": "ConditionalCheckFailedException"}}, "UpdateItem")
+        if "ADD" in expression:
+            for name in values:
+                attr = name.lstrip(":")
+                addend = values[name]
+                addend_num = (
+                    float(addend.get("N", "0")) if isinstance(addend, dict) else float(addend)
+                )
+                current = item.get(attr, {"N": "0"})
+                current["N"] = str(float(current.get("N", "0")) + addend_num)
+            return {}
+
+        for target, placeholder in re.findall(r"(#?\w+)\s*=\s*(:\w+)", expression):
+            attr = names.get(target, target.lstrip("#"))
+            item[attr] = values[placeholder]
+        return {}
+
+    def put_item(self, TableName: str, Item: dict, ConditionExpression: str | None = None) -> dict:  # noqa: N803
+        if ConditionExpression and "attribute_not_exists" in ConditionExpression:
+            key = self._k(Item)
+            if key in self.items:
+                raise ClientError({"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem")
+        self.items[self._k(Item)] = Item
         return {}
 
     def get_item(self, TableName: str, Key: dict) -> dict:  # noqa: N803
@@ -161,7 +201,7 @@ class TestGateRoute:
         assert verdict["state"] == "ALLOW"
         assert verdict["schema_version"] == "v1"
         # three writes: verdict lookup, state feed, and the replayable call
-        assert len(fake_ddb.items) == 3
+        assert len(fake_ddb.items) == 4
         lookup = fake_ddb.items[(f"VERDICT#{verdict['verdict_id']}", "META")]
         assert lookup["state"]["S"] == "ALLOW"
         assert int(lookup["ttl"]["N"]) > 0
