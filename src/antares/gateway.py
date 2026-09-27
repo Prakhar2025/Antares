@@ -25,12 +25,15 @@ from pydantic import ValidationError
 from .bypass import issue_bypass, verify_bypass
 from .canary import find_echo, new_canary
 from .gate import run_gate
+from .ledger import Ledger
 from .llm import converse_json
 from .perimeter import screen_l1, screen_params
 from .policy import Policy
+from .probes import measure_radius
 from .quorum import run_quorum
 from .registry import ToolRegistry, UnknownTool
-from .schemas import Latency, ToolCall, Verdict, VerdictState
+from .saga import SagaEngine
+from .schemas import Finding, Latency, ToolCall, Verdict, VerdictState
 
 logger = Logger(service="antares-gate")
 
@@ -75,6 +78,9 @@ def create_app(
     bedrock: Any = None,
     kms: Any = None,
     signing_key_id: str | None = None,
+    aws_clients: dict[str, Any] | None = None,
+    ledger: Ledger | None = None,
+    saga: SagaEngine | None = None,
 ) -> Callable[[dict[str, Any], dict[str, Any] | None], dict[str, Any]]:
     """Build the request handler with injected dependencies."""
 
@@ -177,13 +183,51 @@ def create_app(
 
         outcome = run_gate(call, registry, policy)
         state = outcome.state
+        radius_view: dict[str, Any] | None = None
         quorum_view: dict[str, Any] | None = None
         bypass: dict[str, Any] | None = None
         bypass_token: str | None = None
 
+        # Mutating classes earn live blast-radius probes (S4).
+        if aws_clients is not None and outcome.result.action_class.value in {
+            "WRITE",
+            "DESTROY",
+            "PERMISSION",
+        }:
+            radius = measure_radius(
+                call.action,
+                call.params,
+                policy.class_weights[outcome.result.action_class.value],
+                aws_clients,
+            )
+            radius_view = radius.as_dict()
+            if radius.unknown:
+                state = VerdictState.ABSTAIN
+                outcome.result.findings.append(
+                    Finding(
+                        rule_id="GATE-RAD-002",
+                        severity="flag",
+                        detail="blast radius unknown: treated at maximum severity",
+                    )
+                )
+            elif radius.score > policy.radius_ceiling:
+                state = VerdictState.HARD_BLOCK
+                outcome.result.findings.append(
+                    Finding(
+                        rule_id="GATE-RAD-001",
+                        severity="block",
+                        detail=(
+                            f"blast radius {radius.score} exceeds the policy ceiling "
+                            f"{policy.radius_ceiling}"
+                        ),
+                    )
+                )
+                outcome.result.code_blocked = True
+
         # Escalated classes and flagged writes earn the cross-vendor quorum.
         needs_quorum = bedrock is not None and (
-            outcome.state is VerdictState.ABSTAIN or outcome.result.action_class.value == "WRITE"
+            state is VerdictState.ABSTAIN
+            or (state is VerdictState.ALLOW and outcome.result.action_class.value == "WRITE")
         )
         if needs_quorum:
             perimeter_findings = screen_params(call.params)
@@ -213,6 +257,7 @@ def create_app(
             state=state,
             call_ref=call.call_id,
             gate=outcome.result,
+            radius=radius_view,
             quorum=quorum_view,
             latency_ms=Latency(
                 gate=outcome.gate_ms,
@@ -242,12 +287,34 @@ def create_app(
             bypass_token = bypass.pop("token")
             verdict.bypass = bypass
         items = _verdict_items(verdict)
+        items.append(
+            {
+                "Put": {
+                    "TableName": table_name,
+                    "Item": {
+                        "pk": {"S": f"CALL#{verdict.verdict_id}"},
+                        "sk": {"S": "META"},
+                        "call": {"S": json.dumps(payload, separators=(",", ":"))},
+                    },
+                }
+            }
+        )
         if verdict.bypass:
             for entry in items:
                 entry["Put"]["Item"]["bypass"] = {
                     "S": json.dumps(verdict.bypass, separators=(",", ":"))
                 }
         ddb.transact_write_items(TransactItems=items)
+        ddb.update_item(
+            TableName=table_name,
+            Key={
+                "pk": {"S": f"METRICS#{datetime.now(UTC).date().isoformat()}"},
+                "sk": {"S": "COUNTS"},
+            },
+            UpdateExpression="ADD verdicts :one, #st :one",
+            ExpressionAttributeNames={"#st": f"state_{verdict.state.value}"},
+            ExpressionAttributeValues={":one": 1},
+        )
         _emit(verdict.state, total_ms)
         logger.info(
             "verdict issued",
@@ -515,6 +582,214 @@ def create_app(
             "body": json.dumps({"incidents": incidents}),
         }
 
+    def _fetch_verdict_and_call(
+        verdict_id: str,
+    ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        vitem = ddb.get_item(
+            TableName=table_name, Key={"pk": {"S": f"VERDICT#{verdict_id}"}, "sk": {"S": "META"}}
+        ).get("Item")
+        citem = ddb.get_item(
+            TableName=table_name, Key={"pk": {"S": f"CALL#{verdict_id}"}, "sk": {"S": "META"}}
+        ).get("Item")
+        return vitem, citem
+
+    def _execute(event: dict[str, Any]) -> dict[str, Any]:
+        if saga is None:
+            return problem(503, "kernel-halted", "Unavailable", "saga engine is not configured")
+        try:
+            payload = json.loads(_decode_body(event))
+        except (json.JSONDecodeError, ValueError):
+            return problem(422, "schema-rejected", "Invalid JSON", "request body is not valid JSON")
+        verdict_id = payload.get("verdict_id")
+        if not isinstance(verdict_id, str) or not verdict_id:
+            return problem(
+                422, "schema-rejected", "Invalid execute request", "verdict_id is required"
+            )
+        vitem, citem = _fetch_verdict_and_call(verdict_id)
+        if not vitem or not citem:
+            return problem(404, "verdict-not-found", "Not found", f"no decision {verdict_id!r}")
+        state = vitem["state"]["S"]
+        bypassed = vitem.get("bypassed", {}).get("BOOL", False)
+        if state == "HARD_BLOCK":
+            return problem(
+                403, "code-veto", "Blocked by code", "blocked verdicts are never executable"
+            )
+        if state == "ABSTAIN" and not bypassed:
+            return problem(
+                403,
+                "bypass-required",
+                "Bypass required",
+                "ABSTAIN verdicts need an approved bypass first",
+            )
+        call = json.loads(citem["call"]["S"])
+        action = call["action"]
+        params = call["params"]
+        try:
+            ddb.transact_write_items(
+                TransactItems=[
+                    {
+                        "ConditionCheck": {
+                            "TableName": table_name,
+                            "ConditionExpression": "attribute_not_exists(pk)",
+                            "Key": {"pk": {"S": f"EXEC#{verdict_id}"}, "sk": {"S": "DONE"}},
+                        }
+                    },
+                    {
+                        "Put": {
+                            "TableName": table_name,
+                            "Item": {
+                                "pk": {"S": f"EXEC#{verdict_id}"},
+                                "sk": {"S": "DONE"},
+                                "executed_at": {"S": datetime.now(UTC).isoformat()},
+                            },
+                        }
+                    },
+                ]
+            )
+        except ClientError:
+            return problem(
+                403, "bypass-invalid", "Already executed", "this verdict was already executed"
+            )
+        result = saga.execute(action, params, action_id=verdict_id)
+        record = {
+            "record_type": "action",
+            "action_id": verdict_id,
+            "verdict_id": verdict_id,
+            "tool": call["tool"],
+            "action": action,
+            "params": params,
+            "committed": result.committed,
+            "prior_hash": result.prior_hash,
+            "new_hash": result.new_hash,
+            "steps": [{"name": st.name, "detail": st.detail} for st in result.steps],
+            "ts": datetime.now(UTC).isoformat(),
+        }
+        receipt = None
+        if ledger is not None and result.committed:
+            receipt = ledger.append(record).as_dict()
+        ddb.put_item(
+            TableName=table_name,
+            Item={
+                "pk": {"S": f"ACTION#{verdict_id}"},
+                "sk": {"S": "META"},
+                "record": {"S": json.dumps(record, separators=(",", ":"))},
+                "receipt": {"S": json.dumps(receipt, separators=(",", ":"))}
+                if receipt
+                else {"NULL": True},
+                "committed": {"BOOL": result.committed},
+            },
+        )
+        return {
+            "statusCode": 200,
+            "headers": _headers(_JSON),
+            "body": json.dumps(
+                {
+                    "status": "executed" if result.committed else "failed",
+                    "action_id": verdict_id,
+                    "saga": {
+                        "committed": result.committed,
+                        "prior_hash": result.prior_hash,
+                        "new_hash": result.new_hash,
+                        "steps": [{"name": st.name, "detail": st.detail} for st in result.steps],
+                        "error": result.error,
+                    },
+                    "receipt": receipt,
+                    "error": result.error,
+                }
+            ),
+        }
+
+    def _rollback(event: dict[str, Any]) -> dict[str, Any]:
+        if saga is None:
+            return problem(503, "kernel-halted", "Unavailable", "saga engine is not configured")
+        path = event.get("path") or ""
+        action_id = path[len("/v1/actions/") : -len("/rollback")]
+        aitem = ddb.get_item(
+            TableName=table_name, Key={"pk": {"S": f"ACTION#{action_id}"}, "sk": {"S": "META"}}
+        ).get("Item")
+        if not aitem:
+            return problem(404, "verdict-not-found", "Not found", f"no action {action_id!r}")
+        record = json.loads(aitem["record"]["S"])
+        result = saga.rollback(record["action"], record["params"], action_id=action_id)
+        rollback_record = {
+            "record_type": "rollback",
+            "action_id": action_id,
+            "action": record["action"],
+            "params": record["params"],
+            "rolled_back": result.rolled_back,
+            "verified": result.rollback_verified,
+            "prior_hash": result.prior_hash,
+            "ts": datetime.now(UTC).isoformat(),
+        }
+        receipt = None
+        if ledger is not None and result.rolled_back:
+            receipt = ledger.append(rollback_record).as_dict()
+        if result.rolled_back:
+            ddb.update_item(
+                TableName=table_name,
+                Key={"pk": {"S": f"ACTION#{action_id}"}, "sk": {"S": "META"}},
+                UpdateExpression="SET rolled_back = :r, rollback_verified = :v",
+                ExpressionAttributeValues={
+                    ":r": {"BOOL": True},
+                    ":v": {"BOOL": result.rollback_verified},
+                },
+            )
+        return {
+            "statusCode": 200,
+            "headers": _headers(_JSON),
+            "body": json.dumps(
+                {
+                    "status": "rolled_back" if result.rolled_back else "failed",
+                    "verified": result.rollback_verified,
+                    "receipt": receipt,
+                    "error": result.error,
+                }
+            ),
+        }
+
+    def _receipt(event: dict[str, Any]) -> dict[str, Any]:
+        path = event.get("path") or ""
+        action_id = path[len("/v1/actions/") : -len("/receipt")]
+        aitem = ddb.get_item(
+            TableName=table_name, Key={"pk": {"S": f"ACTION#{action_id}"}, "sk": {"S": "META"}}
+        ).get("Item")
+        if not aitem or "receipt" not in aitem:
+            return problem(404, "verdict-not-found", "Not found", f"no receipt for {action_id!r}")
+        return {"statusCode": 200, "headers": _headers(_JSON), "body": aitem["receipt"]["S"]}
+
+    def _metrics_view(event: dict[str, Any]) -> dict[str, Any]:
+        today = datetime.now(UTC).date().isoformat()
+        item = ddb.get_item(
+            TableName=table_name,
+            Key={"pk": {"S": f"METRICS#{today}"}, "sk": {"S": "COUNTS"}},
+        ).get("Item")
+        counters = (
+            {key: int(value["N"]) for key, value in item.items() if key not in {"pk", "sk"}}
+            if item
+            else {}
+        )
+        return {
+            "statusCode": 200,
+            "headers": _headers(_JSON),
+            "body": json.dumps({"date": today, "counters": counters}),
+        }
+
+    def _attacks(event: dict[str, Any]) -> dict[str, Any]:
+        from .perimeter import _SIGNATURES
+
+        return {
+            "statusCode": 200,
+            "headers": _headers(_JSON),
+            "body": json.dumps(
+                {
+                    "attacks": [
+                        {"rule_id": sig_id, "severity": severity, "category": category}
+                        for sig_id, severity, category, _pattern in _SIGNATURES
+                    ],
+                }
+            ),
+        }
+
     def handle(event: dict[str, Any], context: dict[str, Any] | None = None) -> dict[str, Any]:
         method = (event.get("httpMethod") or "GET").upper()
         path = event.get("path") or ""
@@ -534,6 +809,16 @@ def create_app(
             return _decision(event)
         if path.startswith("/v1/decisions/") and path.endswith("/bypass") and method == "POST":
             return _bypass_redeem(event)
+        if path == "/v1/execute" and method == "POST":
+            return _execute(event)
+        if path.startswith("/v1/actions/") and path.endswith("/rollback") and method == "POST":
+            return _rollback(event)
+        if path.startswith("/v1/actions/") and path.endswith("/receipt") and method == "GET":
+            return _receipt(event)
+        if path == "/v1/metrics" and method == "GET":
+            return _metrics_view(event)
+        if path == "/v1/attacks" and method == "GET":
+            return _attacks(event)
         return problem(404, "not-found", "Not found", f"no route for {method} {path}")
 
     return handle

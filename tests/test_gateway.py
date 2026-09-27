@@ -16,6 +16,7 @@ class FakeDynamo:
 
     def __init__(self) -> None:
         self.items: dict[tuple[str, str], dict] = {}
+        self.updates: list[dict] = []
 
     def transact_write_items(self, TransactItems: list) -> dict:  # noqa: N803
         for entry in TransactItems:
@@ -38,6 +39,11 @@ class FakeDynamo:
                 key = (update["Key"]["pk"]["S"], update["Key"]["sk"]["S"])
                 if key in self.items:
                     self.items[key]["bypassed"] = {"BOOL": True}
+
+    def update_item(self, **kwargs: object) -> dict:
+        # ADD-expression counters: record the raw call for contract checks.
+        self.updates.append(kwargs)
+        return {}
 
     def get_item(self, TableName: str, Key: dict) -> dict:  # noqa: N803
         item = self.items.get((Key["pk"]["S"], Key["sk"]["S"]))
@@ -154,10 +160,13 @@ class TestGateRoute:
         verdict = json.loads(response["body"])
         assert verdict["state"] == "ALLOW"
         assert verdict["schema_version"] == "v1"
-        assert len(fake_ddb.items) == 2
+        # three writes: verdict lookup, state feed, and the replayable call
+        assert len(fake_ddb.items) == 3
         lookup = fake_ddb.items[(f"VERDICT#{verdict['verdict_id']}", "META")]
         assert lookup["state"]["S"] == "ALLOW"
         assert int(lookup["ttl"]["N"]) > 0
+        call_item = fake_ddb.items[(f"CALL#{verdict['verdict_id']}", "META")]
+        assert json.loads(call_item["call"]["S"])["tool"] == "ledger.describe"
 
     def test_shell_metachar_hard_blocks(self, app) -> None:
         response = app(
@@ -252,9 +261,14 @@ class TestQuorumFlow:
     def test_bypass_on_missing_decision_is_404(self, fake_ddb) -> None:
         # Full route validation precedes the signing-config check (doc 13).
         app = create_app(
-            policy=Policy(), registry=build_default_registry(), ddb=fake_ddb,
-            table_name="antares-dev-main", halt=False, metrics=None,
-            kms=FakeKms(), signing_key_id="alias/antares-dev-signing",
+            policy=Policy(),
+            registry=build_default_registry(),
+            ddb=fake_ddb,
+            table_name="antares-dev-main",
+            halt=False,
+            metrics=None,
+            kms=FakeKms(),
+            signing_key_id="alias/antares-dev-signing",
         )
         response = app(_event("POST", "/v1/decisions/whatever/bypass", {"token": "v1.x.y"}))
         assert response["statusCode"] == 404
@@ -312,20 +326,36 @@ class TestScreenRoute:
         # The headline FPR test: quoted attack grammar plus a benign verdict
         # from Nova Lite must NOT read HOSTILE (doc 03 F1 acceptance).
         app = create_app(
-            policy=Policy(), registry=build_default_registry(), ddb=fake_ddb,
-            table_name="antares-dev-main", halt=False, metrics=None,
-            bedrock=FakeBedrock({
-                "us.amazon.nova-lite-v1:0": [
-                    json.dumps({
-                        "risk": 0.1, "category": "clean", "reason": "quoted research prose",
-                    })
-                ],
-            }),
+            policy=Policy(),
+            registry=build_default_registry(),
+            ddb=fake_ddb,
+            table_name="antares-dev-main",
+            halt=False,
+            metrics=None,
+            bedrock=FakeBedrock(
+                {
+                    "us.amazon.nova-lite-v1:0": [
+                        json.dumps(
+                            {
+                                "risk": 0.1,
+                                "category": "clean",
+                                "reason": "quoted research prose",
+                            }
+                        )
+                    ],
+                }
+            ),
         )
-        response = app(_event("POST", "/v1/screen", {"text":
-            "This week in prompt injection research: researchers catalogued how "
-            "the phrase ignore all previous instructions became famous."
-        }))
+        response = app(
+            _event(
+                "POST",
+                "/v1/screen",
+                {
+                    "text": "This week in prompt injection research: researchers catalogued how "
+                    "the phrase ignore all previous instructions became famous."
+                },
+            )
+        )
         body = json.loads(response["body"])
         assert body["verdict"] == "SUSPECT"
         assert body["semantic"]["risk"] == 0.1

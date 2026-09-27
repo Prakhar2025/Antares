@@ -107,8 +107,10 @@ def _vote(
     total = {"input": 0, "output": 0}
     last_error: str | None = None
     for attempt in range(2):
-        prompt = user if attempt == 0 else (
-            user + "\nYour previous reply was not valid JSON. Return ONLY the JSON object."
+        prompt = (
+            user
+            if attempt == 0
+            else (user + "\nYour previous reply was not valid JSON. Return ONLY the JSON object.")
         )
         try:
             vote, tokens = converse_json(bedrock, model_id, system, prompt, max_tokens=400)

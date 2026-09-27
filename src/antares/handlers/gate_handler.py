@@ -13,8 +13,10 @@ import boto3
 from aws_lambda_powertools import Logger, Metrics, Tracer
 
 from antares.gateway import create_app
+from antares.ledger import Ledger
 from antares.policy import Policy
 from antares.registry import build_default_registry
+from antares.saga import SagaEngine
 
 logger = Logger(service="antares-gate")
 tracer = Tracer()
@@ -25,7 +27,18 @@ _registry = build_default_registry()
 _ddb = boto3.client("dynamodb")
 _bedrock = boto3.client("bedrock-runtime")
 _kms = boto3.client("kms")
+_s3 = boto3.client("s3")
+_ssm = boto3.client("ssm")
 _halt = os.environ.get("ANTARES_HALT", "false").lower() == "true"
+
+_ledger = Ledger(_ddb, os.environ["ANTARES_TABLE_NAME"])
+_saga = SagaEngine(
+    ddb=_ddb,
+    s3=_s3,
+    ssm=_ssm,
+    ledger_table=os.environ["ANTARES_TABLE_NAME"],
+    vault_table=os.environ["ANTARES_TABLE_NAME"],
+)
 
 app = create_app(
     policy=_policy,
@@ -37,6 +50,9 @@ app = create_app(
     bedrock=_bedrock,
     kms=_kms,
     signing_key_id=os.environ.get("ANTARES_SIGNING_KEY_ID"),
+    aws_clients={"dynamodb": _ddb, "s3": _s3, "ssm": _ssm},
+    ledger=_ledger,
+    saga=_saga,
 )
 
 

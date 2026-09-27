@@ -38,6 +38,7 @@ class Policy:
     blast_abstain: float = 0.70
     divergence_abstain: float = 0.60
     bypass_ttl_seconds: int = 60
+    radius_ceiling: float = 0.9
     # Model ids (ADR-002): config, never hardcoded in handlers.
     reasoner_model_id: str = "us.amazon.nova-pro-v1:0"
     adversary_model_id: str = "us.meta.llama3-3-70b-instruct-v1:0"
@@ -67,6 +68,7 @@ class Policy:
                 source.get("ANTARES_DIVERGENCE_ABSTAIN", base.divergence_abstain)
             ),
             bypass_ttl_seconds=int(source.get("ANTARES_BYPASS_TTL", base.bypass_ttl_seconds)),
+            radius_ceiling=float(source.get("ANTARES_RADIUS_CEILING", base.radius_ceiling)),
             reasoner_model_id=source.get("ANTARES_REASONER_MODEL", base.reasoner_model_id),
             adversary_model_id=source.get("ANTARES_ADVERSARY_MODEL", base.adversary_model_id),
             perimeter_model_id=source.get("ANTARES_PERIMETER_MODEL", base.perimeter_model_id),

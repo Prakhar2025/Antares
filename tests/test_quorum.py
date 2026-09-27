@@ -54,10 +54,12 @@ class TestFusion:
 
     def test_high_blast_abstains_for_human(self) -> None:
         # Both models agree the action is dangerous but not an attack: human call.
-        outcome = _run({
-            NOVA: [_vote(0.9, "purges the table")],
-            LLAMA: [_vote(0.4, "legitimate purge request")],
-        })
+        outcome = _run(
+            {
+                NOVA: [_vote(0.9, "purges the table")],
+                LLAMA: [_vote(0.4, "legitimate purge request")],
+            }
+        )
         assert outcome.state.value == "ABSTAIN"
         assert outcome.fusion == "QUORUM-BLAST-001"
 
