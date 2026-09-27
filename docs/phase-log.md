@@ -46,3 +46,12 @@
 - The console dispatcher runs four preset scenarios against the real stack: benign ops (ALLOW, gate 0-1 ms), clean write (ALLOW with live quorum votes), poisoned write (HARD_BLOCK, perimeter OVR-001 plus quorum conviction), destructive delete (ABSTAIN or ALLOW by quorum judgment)
 - Deployment pipeline: static export built with the API URL baked in, synced to the site bucket, CloudFront with index-resolution function, automatic restage on deploy
 - What-broke ledger: OAC resource rejected by the account early-validation hook (bisected via probe stacks; classic public-read bucket policy adopted), mock integrations need request templates (mock 500 lesson), S3 sync backslash keys verified clean
+
+## Benchmark milestone evidence (2026-09-27)
+
+- 300-case corpus generated and committed (evals/corpus.jsonl via evals/corpus.py, seed-stable): 150 benign (including 44 adversarial-benign) and 150 adversarial across six named classes
+- Fused pipeline (default adversary Llama 3.3 70B): not-allowed recall 1.0, hard-block recall 0.7, benign FPR 0.193 (target 0.035: missed and published with the named regression), 133 s wall
+- Adversary A/B complete: Llama 3.3 (1.0/0.193/133 s) shipped over Maverick (0.98/0.313), GPT-OSS (0.973/0.16), DeepSeek R1 (0.967/670 s)
+- McNemar fused versus code-only: b=6, c=15, p=0.078, with the mechanism analysis published
+- BENCHMARK.md published; doc 07 back-filled to version 0.2; one public URL serves the console and the metrics
+- Live direct DynamoDB put verified the ledger head conditional-put lesson (untyped ts caught by ParamValidationError, fixed and ledgered)

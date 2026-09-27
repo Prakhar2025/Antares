@@ -76,6 +76,11 @@ class GetParameterParams(_Strict):
     name: str
 
 
+class AttachPolicyParams(_Strict):
+    role_name: str
+    policy_arn: str
+
+
 class PutParameterParams(_Strict):
     name: str
     value: str

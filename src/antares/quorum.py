@@ -239,6 +239,15 @@ def run_quorum(
         state, fusion = VerdictState.ABSTAIN, "QUORUM-DIV-001"
     elif r_risk is not None and r_risk >= policy.blast_abstain:
         state, fusion = VerdictState.ABSTAIN, "QUORUM-BLAST-001"
+    elif action_class == "DESTROY" and policy.destroy_requires_approval:
+        state, fusion = VerdictState.ABSTAIN, "QUORUM-DEST-001"
+        findings.append(
+            {
+                "rule_id": "QUORUM-DEST-001",
+                "severity": "info",
+                "detail": "destructive class requires human approval (policy)",
+            }
+        )
     else:
         state, fusion = VerdictState.ALLOW, "QUORUM-ALLOW-001"
 

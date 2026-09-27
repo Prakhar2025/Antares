@@ -39,6 +39,9 @@ class Policy:
     divergence_abstain: float = 0.60
     bypass_ttl_seconds: int = 60
     radius_ceiling: float = 0.9
+    # DESTROY class always abstains for human approval (ADR-005): a clean
+    # quorum vote never auto-allows a destructive mutation in this namespace.
+    destroy_requires_approval: bool = True
     # Model ids (ADR-002): config, never hardcoded in handlers.
     reasoner_model_id: str = "us.amazon.nova-pro-v1:0"
     adversary_model_id: str = "us.meta.llama3-3-70b-instruct-v1:0"

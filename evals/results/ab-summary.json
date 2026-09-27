@@ -1,0 +1,37 @@
+{
+  "mcnemar_fused_vs_code_only": {
+    "b_code_caught_fused_allowed": 6,
+    "c_fused_caught_code_allowed": 15,
+    "p_value": 0.07835388
+  },
+  "adversary_table": [
+    {
+      "adversary": "us.meta.llama3-3-70b-instruct-v1:0",
+      "not_allowed_recall": 1.0,
+      "hard_block_recall": 0.7,
+      "fpr": 0.1933,
+      "wall_seconds": 133
+    },
+    {
+      "adversary": "us.meta.llama4-maverick-17b-instruct-v1:0",
+      "not_allowed_recall": 0.98,
+      "hard_block_recall": 0.68,
+      "fpr": 0.3133,
+      "wall_seconds": 123
+    },
+    {
+      "adversary": "openai.gpt-oss-120b-1:0",
+      "not_allowed_recall": 0.9733,
+      "hard_block_recall": 0.6467,
+      "fpr": 0.16,
+      "wall_seconds": 244
+    },
+    {
+      "adversary": "us.deepseek.r1-v1:0",
+      "not_allowed_recall": 0.9667,
+      "hard_block_recall": 0.6467,
+      "fpr": 0.18,
+      "wall_seconds": 670
+    }
+  ]
+}

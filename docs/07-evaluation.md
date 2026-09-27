@@ -52,8 +52,13 @@ Candidates: Meta Llama 3.3 70B (incumbent default), Meta Llama 4 Maverick, OpenA
 4. Latency is measured from the public API edge, not from inside the Lambda.
 5. No number from this document is ever quoted as a result until doc 07 is updated with the measured table by the build phases.
 
+## 6. Measured results (2026-09-27, corpus version 1)
+
+Published in full in BENCHMARK.md. Headline: fused not-allowed recall 1.00 (40/40 injection slice, Wilson 0.976 to 1.0), benign FPR 0.193 (Wilson 0.127 to 0.249) against the 0.035 target: **missed and published**, with the named regression (adversarial red-teamer over-flags quoted attack grammar in benign prose; fix path routed to the next corpus iteration). Adversary A/B: Llama 3.3 70B shipped (recall 1.0, FPR 0.193, 133 s wall) over Maverick (0.98/0.313), GPT-OSS 120B (0.973/0.16, 244 s) and DeepSeek R1 (0.967/0.18, 670 s). McNemar fused versus code-only: b=6, c=15, p=0.078 (the two pipelines reach total recall by different mechanisms; the qualitative fused advantage is the exfiltration convictions and the benign rescues the code layer cannot see). One public URL serves the console and the metrics (CloudFront).
+
 ## Changelog
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2 | 2026-09-27 | Measured results section added after the benchmark runs; headline, named miss and A/B verdict recorded. |
 | 0.1 | 2026-09-27 | Initial draft for owner review. |
