@@ -313,7 +313,7 @@ def create_app(
             },
             UpdateExpression="ADD verdicts :one, #st :one",
             ExpressionAttributeNames={"#st": f"state_{verdict.state.value}"},
-            ExpressionAttributeValues={":one": 1},
+            ExpressionAttributeValues={":one": {"N": "1"}},
         )
         _emit(verdict.state, total_ms)
         logger.info(

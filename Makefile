@@ -35,7 +35,7 @@ build:
 	$(PY) -m pip install --platform manylinux2014_aarch64 --implementation cp --python-version 3.12 --only-binary=:all: -r requirements.txt -t .aws-build
 	rm -rf .aws-build/boto3 .aws-build/botocore .aws-build/boto3-*.dist-info .aws-build/botocore-*.dist-info
 	cp -r src/antares .aws-build/antares
-	$(PY) -c "import io; s = io.open('.aws-build/antares/handlers/gate_handler.py', encoding='utf-8').read(); assert 'bedrock-runtime' in s, 'stale bundle: handler missing bedrock wiring'"
+	"$(PY)" -c "import io; s = io.open('.aws-build/antares/handlers/gate_handler.py', encoding='utf-8').read(); assert 'bedrock-runtime' in s, 'stale bundle: handler missing bedrock wiring'"
 
 package: build
 	aws cloudformation package --template-file infra/template.yaml --s3-bucket $(BUCKET) --s3-prefix antares-dev --output-template .aws-build/packaged.yaml --region $(REGION)

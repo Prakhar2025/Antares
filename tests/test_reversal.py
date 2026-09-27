@@ -33,10 +33,22 @@ class FakeWorldDynamo:
         item = self._table(TableName).get(self._k(Key))
         return {"Item": item} if item else {}
 
-    def put_item(self, TableName: str, Item: dict, ConditionExpression: str | None = None) -> dict:  # noqa: N803
+    def put_item(
+        self,
+        TableName: str,
+        Item: dict,
+        ConditionExpression: str | None = None,
+        ExpressionAttributeValues: dict | None = None,
+    ) -> dict:  # noqa: N803
         key = self._k(Item)
         table = self._table(TableName)
-        if ConditionExpression and key in table:
+        if ConditionExpression and "leaf_hash = :expected" in ConditionExpression:
+            # ledger head semantics: genesis passes, unchanged head passes
+            expected = (ExpressionAttributeValues or {}).get(":expected", {}).get("S", "")
+            head = table.get(key)
+            if head and head["leaf_hash"]["S"] != expected:
+                raise ClientError({"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem")
+        elif ConditionExpression and "attribute_not_exists" in ConditionExpression and key in table:
             raise ClientError({"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem")
         table[key] = Item
         return {}

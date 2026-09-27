@@ -57,34 +57,18 @@ class Ledger:
             head = self._head()
             leaf = sha256_hex(canonical_json(record))
             try:
-                self.ddb.transact_write_items(
-                    TransactItems=[
-                        {
-                            "ConditionCheck": {
-                                "TableName": self.table_name,
-                                "Key": {"pk": {"S": "CHAIN"}, "sk": {"S": "HEAD"}},
-                                "ConditionExpression": (
-                                    "attribute_not_exists(pk) OR leaf_hash = :expected"
-                                ),
-                                "ExpressionAttributeValues": {
-                                    ":expected": {"S": head["leaf_hash"]}
-                                },
-                            }
-                        },
-                        {
-                            "Put": {
-                                "TableName": self.table_name,
-                                "Item": {
-                                    "pk": {"S": "CHAIN"},
-                                    "sk": {"S": "HEAD"},
-                                    "leaf_hash": {"S": leaf},
-                                    "prev_leaf_hash": {"S": head["leaf_hash"]},
-                                    "height": {"N": str(head["height"] + 1)},
-                                    "ts": record.get("ts", ""),
-                                },
-                            }
-                        },
-                    ]
+                self.ddb.put_item(
+                    TableName=self.table_name,
+                    Item={
+                        "pk": {"S": "CHAIN"},
+                        "sk": {"S": "HEAD"},
+                        "leaf_hash": {"S": leaf},
+                        "prev_leaf_hash": {"S": head["leaf_hash"]},
+                        "height": {"N": str(head["height"] + 1)},
+                        "ts": record.get("ts", ""),
+                    },
+                    ConditionExpression=("attribute_not_exists(pk) OR leaf_hash = :expected"),
+                    ExpressionAttributeValues={":expected": {"S": head["leaf_hash"]}},
                 )
             except Exception:  # noqa: BLE001  (condition raced: re-read and retry)
                 head = self._head()

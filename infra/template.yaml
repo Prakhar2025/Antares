@@ -130,6 +130,7 @@ Resources:
                 - dynamodb:PutItem
                 - dynamodb:GetItem
                 - dynamodb:Query
+                - dynamodb:UpdateItem
               Resource: !GetAtt MainTable.Arn
             - Effect: Allow
               Action:
@@ -290,6 +291,26 @@ Resources:
         IntegrationHttpMethod: POST
         Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
 
+  ApiExecuteResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api
+      ParentId: !Ref ApiV1Resource
+      PathPart: execute
+
+  ExecuteMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref Api
+      ResourceId: !Ref ApiExecuteResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GateFunction.Arn}/invocations"
+
   ApiDecisionIdResource:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -342,6 +363,7 @@ Resources:
       - CanariesMethod
       - CheckMethod
       - IncidentsMethod
+      - ExecuteMethod
     Properties:
       RestApiId: !Ref Api
 

@@ -145,15 +145,10 @@ class TestLedgerFork:
             # ClientError imported at module top (botocore).
             """Head item always exists with an unexpected leaf: forces fork."""
 
-            def transact_write_items(self, TransactItems: list) -> dict:  # noqa: N803
-                # Every condition check fails: simulates a head that always moved.
-                for entry in TransactItems:
-                    if "ConditionCheck" in entry:
-                        raise ClientError(
-                            {"Error": {"Code": "TransactionCanceledException"}},
-                            "TransactWriteItems",
-                        )
-                return {}
+            def put_item(self, TableName: str, Item: dict, ConditionExpression: str | None = None,
+                         ExpressionAttributeValues: dict | None = None) -> dict:  # noqa: N803
+                # The head always moved: every conditional head put fails.
+                raise ClientError({"Error": {"Code": "ConditionalCheckFailedException"}}, "PutItem")
 
         ledger = Ledger(RacingWorld(), "antares-dev-main")
         with pytest.raises(LedgerForkError):

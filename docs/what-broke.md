@@ -75,3 +75,27 @@ Root cause: two independent staleness bugs. AWS::ApiGateway::Deployment does not
 Fix: new Methods added as raw resources with explicit DependsOn into the Deployment; a bundle verification assert (handler must carry the bedrock wiring) runs inside the build target; the deploy target now restages the API automatically.
 Prevention: never trust a successful deploy to mean the artifact is fresh; the deploy pipeline verifies bundle contents and restages, and the smoke battery exercises every new route immediately after.
 Phase: gate (quorum bring-up)
+## [2026-09-27] the workspace path contains spaces and make split the interpreter command
+Symptom: build verification failed with "C:/Users/prakh/projects/Zero: No such file or directory" while running the bundle assert.
+Root cause: the repository lives under "Zero to Shipped"; make recipes run through sh, and the unquoted $(PY) expanded to a path with spaces, splitting into two words.
+Fix: quote the interpreter reference in every recipe ("$(PY)"). Prevention: quote every path-bearing variable in make recipes unconditionally; spaces in workspace names are a permanent property of this machine.
+Phase: gate (reversal bring-up)
+## [2026-09-27] ADD counter used an untyped value: the fake hid what real DynamoDB enforces
+Symptom: first live Reversal call 500-ed with "Invalid type for parameter ExpressionAttributeValues.:one, value: 1".
+Root cause: the gateway sent a plain int for the ADD counter; real DynamoDB requires typed values ({"N": "1"}), while the fake accepted the plain int, so the fake was LOOSER than the real service.
+Fix: gateway sends {"N": "1"}; the fake keeps tolerant parsing but the contract note in doc 14 now reads: fakes may be tolerant, production code must never be.
+Prevention: when a fake and the real service disagree, tighten the fake toward the real contract and re-run; integration smoke on the live stack is the second line of defense and caught this within one call.
+Phase: gate (reversal bring-up)
+## [2026-09-27] the metrics counter needed UpdateItem and the role did not have it
+Symptom: live seed call 500-ed with AccessDeniedException on dynamodb:UpdateItem for antares-dev-main.
+Root cause: the Reversal milestone added atomic ADD counters (which are UpdateItem calls) but the IAM statement still listed only the original three actions.
+Fix: UpdateItem added to the MainTable statement; the least-privilege scope is unchanged (same single table).
+Prevention: every new write pattern is cross-checked against the IAM statement in the same commit; the launch checklist gains an "IAM matches code" review line.
+Phase: gate (reversal bring-up)
+
+## [2026-09-27] three transactions used two operations on the same item key
+Symptom: every execute attempt returned Already executed on a fresh verdict; the ledger append failed with a fork error on its second record.
+Root cause: DynamoDB transactions forbid two operations on the same item key, and three flows (execute marker, bypass redemption, ledger head advance) paired a ConditionCheck with a Put or Update on the identical key.
+Fix: single-item conditional writes: the execute marker and the ledger head are one conditional put each; single-use bypass enforcement lives on the verdict item via a conditional update, with the redemption record written separately.
+Prevention: transaction design rule added to doc 14: a transaction never contains two operations on the same key; conditional single-item writes are the default for markers.
+Phase: gate (reversal bring-up)

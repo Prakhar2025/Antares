@@ -1,0 +1,1 @@
+{"type": "urn:antares:errors:bypass-invalid", "code": "bypass-invalid", "title": "Already executed", "detail": "this verdict was already executed", "status": 403}
