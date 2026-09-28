@@ -15,3 +15,4 @@ build/
 .coverage
 console/out/
 scripts/cfprobe/
+brag-output/
