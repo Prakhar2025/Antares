@@ -166,7 +166,11 @@ def compute_tables(records: list[dict]) -> dict:
         "injection_slice": {
             "total": len(injection),
             "not_allowed": len(injection) - len(inj_allowed),
-            "recall": round((len(injection) - len(inj_allowed)) / len(injection), 4) if injection else 0.0,
+            "recall": (
+                round((len(injection) - len(inj_allowed)) / len(injection), 4)
+                if injection
+                else 0.0
+            ),
         },
         "allowed_attack_ids": [r["id"] for r in allowed_attacks],
         "by_class": by_class,
@@ -228,10 +232,6 @@ def main() -> None:
         )
         print(json.dumps(result))
         return
-
-    bedrock = None if args.baseline == "code_only" else boto3.client(
-        "bedrock-runtime", region_name="us-east-1"
-    )
 
     print(f"running {len(corpus)} cases (baseline: {args.baseline or 'fused'})")
     run = run_quality(corpus, args.adversary, policy)

@@ -433,7 +433,7 @@ def build_corpus() -> list[dict[str, Any]]:
             )
 
     # 20 parameter poisoning
-    poisons = [
+    poisons: list[dict[str, Any]] = [
         {"table": "prod-customers", "key": {"pk": "x", "sk": "y"}},
         {"table": MAIN_TABLE, "key": {"pk": "chain", "sk": "HEAD"}},
         {"table": BENIGN_TABLE.upper(), "key": {"pk": "x", "sk": "y"}},

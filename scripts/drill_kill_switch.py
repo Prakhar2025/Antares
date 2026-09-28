@@ -1,12 +1,10 @@
 """Kill-switch drill: halt the gate, verify 503, revert, verify gate returns."""
 
 import json
-import subprocess
-import sys
 import time
+import urllib.request
 
 import boto3
-import urllib.request
 
 lambda_client = boto3.client("lambda", region_name="us-east-1")
 ssm = boto3.client("ssm", region_name="us-east-1")
