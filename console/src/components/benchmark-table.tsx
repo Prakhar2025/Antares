@@ -7,12 +7,17 @@ const ROWS = [
   { model: "DeepSeek R1", note: "5× slower", recall: "0.967", hard: "0.647", fpr: "0.180", wall: "670 s" },
 ];
 
-export function BenchmarkTable() {
+export function BenchmarkTable({ tone = "dark" }: { tone?: "dark" | "light" }) {
+  const border = tone === "dark" ? "hairline" : "border-paperline";
+  const strong = tone === "dark" ? "text-ink" : "text-inkw";
+  const dim = tone === "dark" ? "text-ink-dim" : "text-stone";
+  const faint = tone === "dark" ? "text-ink-faint" : "text-fog";
+  const accent = tone === "dark" ? "text-antares" : "text-ember";
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] text-left text-sm">
         <thead>
-          <tr className="label border-b hairline">
+          <tr className={`label border-b ${border}`}>
             <th className="py-2 pr-4 font-normal">adversary</th>
             <th className="py-2 pr-4 font-normal">note</th>
             <th className="py-2 pr-4 font-normal">not-allowed recall</th>
@@ -23,10 +28,10 @@ export function BenchmarkTable() {
         </thead>
         <tbody className="mono text-xs">
           {ROWS.map((row, i) => (
-            <tr key={row.model} className={`border-b hairline ${i === 0 ? "text-ink" : "text-ink-dim"}`}>
+            <tr key={row.model} className={`border-b ${border} ${i === 0 ? strong : dim}`}>
               <td className="py-2.5 pr-4">
                 {row.model}
-                {i === 0 && <span className="ml-2 text-antares">✓ shipped</span>}
+                {i === 0 && <span className={`ml-2 ${accent}`}>✓ shipped</span>}
               </td>
               <td className="py-2.5 pr-4">{row.note}</td>
               <td className="py-2.5 pr-4">{row.recall}</td>
@@ -37,7 +42,7 @@ export function BenchmarkTable() {
           ))}
         </tbody>
       </table>
-      <p className="mt-3 text-[11px] leading-relaxed text-ink-faint">
+      <p className={`mt-3 text-[11px] leading-relaxed ${faint}`}>
         300-case corpus (150 benign incl. 44 adversarial-benign, 150 adversarial across
         six classes). Identical prompts and thresholds per candidate. Wilson 95 percent
         intervals and the McNemar comparison against the code-only baseline in

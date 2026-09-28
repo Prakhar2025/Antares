@@ -24,7 +24,7 @@ export function LiveTicker() {
       <div className="grid grid-cols-2 gap-px bg-paperline border-y border-paperline lg:grid-cols-4">
         {[
           ["recall 1.000", "not-allowed attacks, 300-case corpus"],
-          ["0 hostile passes", "nothing hostile cleared the kernel"],
+          ["0 hostile passes", "on the published 300-case corpus"],
           ["22 to 34 ms", "fast-path gate latency, measured"],
           ["596 to 940 ms", "escalated path with two model votes"],
         ].map(([value, label]) => (
