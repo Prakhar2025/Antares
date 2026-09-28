@@ -57,3 +57,24 @@ body {
   background: var(--color-hairline);
   border-radius: 0;
 }
+
+/* v2: the light editorial world (the /v2 comparison design). Warm paper,
+ * warm ink, one crimson that shares its hue with the dark-world accent. */
+@theme {
+  --color-paper: #f7f5f0;
+  --color-paperline: #e2ded2;
+  --color-stone: #6b6353;
+  --color-fog: #9b9282;
+  --color-inkw: #191511;
+  --color-coal: #141210;
+  --color-coalline: #2c2823;
+  --color-ember: #b3372c;
+  --color-moss: #1c7a4b;
+  --color-honey: #a06b10;
+}
+
+.serif-display {
+  font-family: var(--font-serif), Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+}
