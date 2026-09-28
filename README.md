@@ -1,70 +1,204 @@
-# Antares: Documentation Suite
+# Antares
 
-> The deterministic execution kernel for autonomous AI agents on AWS. Every tool call an agent attempts is gated by code first, judged by a cross-vendor model quorum second, measured against live cloud state, and reversible by construction. Models propose, code decides.
+**The deterministic execution kernel for autonomous AI agents on AWS.**
 
-**Antares: the execution antares for autonomous AI agents.** Every machine that can run away carries a antares; agents are machines that run away.
+Agents hold real credentials. Antares stands between their decisions and your
+cloud: every mutating tool call is gated by deterministic code first, judged on
+escalation by a cross-vendor Amazon Bedrock quorum, measured for blast radius
+against live cloud state through read-only probes, executed through compensating
+sagas, and recorded into a tamper-evident Merkle chain. The principle is also
+the control flow: **models propose, code decides.**
 
-Version 0.2 · Status: Draft, full suite awaiting owner review · Owner: Prakhar Shukla · 2026-09-27
+![Antares landing](docs/assets/landing.png)
 
-## Document Index
+## Live, zero login
+
+The public site serves the real kernel through the same URL: open the console,
+pick a scenario, dispatch, and watch the verdict stream carry real Bedrock
+votes, live blast-radius probes and a receipt.
+
+- Site: https://d3jhd66xz9xdo9.cloudfront.net
+- Console: https://d3jhd66xz9xdo9.cloudfront.net/console
+
+![Antares console](docs/assets/console.png)
+
+Nothing in the console is mocked. The poisoned write you can dispatch carries
+OWASP LLM01 in a data field; the perimeter flags it before any model runs; both
+model families vote in parallel; the fused verdict hard-blocks and the evidence
+bundle is persisted.
+
+## Why this exists
+
+| Existing layer | What it reads | What it cannot see |
+|---|---|---|
+| Text guardrails | content strings | tool parameters, shell metacharacters, resource ARNs, live state |
+| Static analysis (IaC scanners) | code, before deploy | runtime agentic decisions |
+| Cloud posture management | configuration drift | the moment a mutation executes |
+
+The runtime execution choke point, the exact moment an agent's thought becomes
+a live AWS mutation, was unoccupied. Antares occupies it.
+
+## How a call is judged
+
+Six stages. Four of them can kill the call.
+
+| Stage | Subsystem | Guarantee |
+|---|---|---|
+| 01 | Perimeter (S0) | untrusted content is canonicalized, then screened by a 16-rule signature library and a semantic classifier; findings travel as identifiers, hostile text never reaches a model raw |
+| 02 | Deterministic gate (S2) | pure code with final veto: schemas, shell tokens, ARN allowlists, class weights |
+| 03 | Cross-vendor quorum (S3) | escalated calls argued twice in parallel by families with no shared lineage; adversary conviction blocks, divergence forces a human |
+| 04 | State probes (S4) | blast radius measured from live AWS state; a failed probe means maximum severity |
+| 05 | Human signature (S5) | destructive classes always abstain, even with clean votes; approvals are KMS-signed, single-use, dead in 60 seconds |
+| 06 | Provenance ledger (S6) | every verdict hashed into a Merkle chain; receipts verify client-side |
+
+Fusion is a deterministic decision table, not an average:
+
+| Condition, in order | Verdict | Fusion id |
+|---|---|---|
+| A model echoed the planted canary audit reference | HARD_BLOCK | QUORUM-TRIP-001 |
+| Adversary risk ≥ block threshold, class not READ | HARD_BLOCK | QUORUM-BLK-001 |
+| Either vote missing or unparseable | ABSTAIN | QUORUM-VOTE-001 |
+| Divergence ≥ abstain threshold | ABSTAIN | QUORUM-DIV-001 |
+| Reasoner blast risk ≥ abstain threshold | ABSTAIN | QUORUM-BLAST-001 |
+| Destructive class, approval policy on | ABSTAIN | QUORUM-DEST-001 |
+| Otherwise | ALLOW | QUORUM-ALLOW-001 |
+
+## Measured, including the miss
+
+On the published, versioned 300-case corpus (150 benign, including 44
+adversarial-benign; 150 adversarial across six classes), measured 2026-09-27
+against the live stack with real Bedrock votes:
+
+| Result | Value | Target |
+|---|---|---|
+| Not-allowed recall on attacks (fused) | 1.000 (Wilson 95 percent: 0.976 to 1.0) | 1.0 |
+| Injection-driven-mutation slice | 40/40 | all |
+| Benign false-positive rate | 0.193 (Wilson: 0.127 to 0.249) | 0.035, **missed and published** |
+| Fast-path latency | 22 to 34 ms | 250 ms |
+| Escalated latency | 596 to 940 ms | 3.5 s |
+
+The red-team seat itself was decided by this table: four candidates ran the
+full corpus with identical prompts and thresholds, and Llama 3.3 70B shipped on
+total recall at the best wall time (133 s), ahead of Llama 4 Maverick (noisy,
+FPR 0.313), GPT-OSS 120B (conservative, recall 0.973) and DeepSeek R1 (5x
+slower for no gain).
+
+Every number is scoped to this corpus: a designed, versioned corpus, not field
+performance across the unbounded space of real traffic. The full methodology,
+Wilson intervals, the McNemar comparison against the code-only baseline
+(b = 6, c = 15, p = 0.078, published with the discordant-pair counts) and the
+named regression behind the FPR miss are in [BENCHMARK.md](BENCHMARK.md).
+
+![Antares benchmark](docs/assets/benchmark.png)
+
+## API surface
+
+Eleven routes. Eight are public and edge-throttled (10 requests per second,
+burst 20); the mutation routes require an API key.
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| POST | `/v1/gate` | public | judge a tool call: perimeter, gate, quorum, probes, verdict + receipt |
+| POST | `/v1/screen` | public | perimeter-only content screen |
+| POST | `/v1/canaries` | public | canary audit-reference registry |
+| POST | `/v1/tripwire/check` | public | over-compliance tripwire check |
+| GET | `/v1/incidents` | public | incident records |
+| GET | `/v1/metrics` | public | live decision counters |
+| GET | `/v1/attacks` | public | recorded attack replays |
+| GET | `/v1/decisions/{id}` | public | fetch a stored verdict by id |
+| POST | `/v1/execute` | API key | execute an approved mutation through the saga |
+| POST | `/v1/actions/{id}/rollback` | API key | reverse an executed action from the vault |
+| GET | `/v1/actions/{id}/receipt` | API key | fetch the Merkle receipt for an action |
+
+Errors are RFC 7807 problem+json (doc 13).
+
+## Security model
+
+- The kernel's IAM reach ends at three sandbox resources, verified by a
+  CI-gated out-of-scope mutation test.
+- Kill switch: one environment flag returns 503 kernel-halted from every gate;
+  exercised live through the public URL.
+- Human approvals: KMS-signed, single-use, dead in 60 seconds, ledgered on
+  redemption.
+- A live USD 10 monthly cost budget alarms the account; competition-window
+  spend is under USD 2. ARM64 compute, on-demand DynamoDB, free-tier
+  CloudFront: no always-on burn.
+
+## Built by an agent, provably
+
+The project was built end to end by a coding agent connected to AWS, reviewed
+at every milestone gate. CloudTrail records the agent's own build calls,
+committed as a proof pack with its generation script
+([docs/submission/proof-pack.json](docs/submission/proof-pack.json)). The
+failure ledger ([docs/what-broke.md](docs/what-broke.md)) carries every build
+failure the day it happened with root cause and prevention rule, seventeen
+entries at this writing; a failure without a prevention rule is treated as
+unfixed.
+
+## Design principles
+
+1. **Code decides.** No model anywhere in the pipeline can overturn a code
+   rejection.
+2. **Evidence or it did not happen.** Every verdict, vote and mutation carries
+   a receipt.
+3. **Blast radius is measured, never imagined.**
+4. **Every mutation is reversible**, or it waits.
+5. **The kernel cannot harm what it guards.** Its IAM scope ends at the sandbox.
+6. **Honest metrics.** Measured numbers only, corpus and thresholds disclosed,
+   Wilson 95 percent intervals on every proportion.
+7. **Fail open or fail loud, by policy, never by accident.**
+
+## Documentation
 
 | # | Document | What it answers |
-|---|----------|-----------------|
-| 01 | [Vision](docs/01-vision.md) | Problem, why now, landscape, open-core business model |
-| 02 | [PR/FAQ](docs/02-prfaq.md) | Amazon working-backwards gate: launch-day press release and hard questions |
-| 03 | [Product Spec](docs/03-product-spec.md) | Personas, journeys, features F1 to F8, acceptance criteria, scope cuts |
-| 04 | [Architecture](docs/04-architecture.md) | Subsystems S0 to S7, request paths, AWS service map, failure matrix |
-| 05 | [Agent Contracts](docs/05-agent-contracts.md) | The enforcement surface: schemas every agent and tool must satisfy |
-| 06 | [Data Design](docs/06-data-design.md) | Single-table layout, state vault, Merkle chain, evidence storage |
-| 07 | [Evaluation](docs/07-evaluation.md) | 300-case corpus, metric bars, adversary A/B protocol, honesty rules |
-| 08 | [Security and Privacy](docs/08-security-privacy.md) | Threat model for the kernel itself, sandbox namespace, launch checklist |
-| 09 | [Deployment](docs/09-deployment.md) | Environments, deploy mechanics, cost model, availability-gate strategy |
-| 10 | [Console](docs/10-console.md) | Public zero-login surface, screens, interaction spec, design language status |
-| 11 | [Roadmap](docs/11-roadmap.md) | Launch phases P0 to P6, eras beyond, what is cut and why |
-| 12 | [Pitch](docs/12-pitch.md) | Video script skeleton, launch checklist, proof pack plan |
-| 13 | [API Spec](docs/13-api-spec.md) | REST contract, error registry, EventBridge event schemas |
-| 14 | [Testing Strategy](docs/14-testing-strategy.md) | Test pyramid, phase loop, CI gates, definition of done |
-| 15 | [Risk Register](docs/15-risk-register.md) | Scored risks with mitigations and early warnings |
-| 16 | [Glossary](docs/16-glossary.md) | Normative definitions of every term |
-| 17 | [Non-Functional and SLOs](docs/17-nonfunctional-slo.md) | Latency budgets, availability, error budget policy, data classification |
-| 18 | [ADRs](docs/18-adrs.md) | The eight decisions that define the system |
-| 19 | [Tech Stack](docs/19-tech-stack.md) | The current and latest stack, pinning policy, rejected options |
-| -- | [What Broke](docs/what-broke.md) | Real-time failure ledger, appended during build, never edited retroactively |
+|---|---|---|
+| 01 | [Vision](docs/01-vision.md) | problem, why now, landscape, open-core model |
+| 02 | [PR/FAQ](docs/02-prfaq.md) | Amazon working-backwards gate |
+| 03 | [Product Spec](docs/03-product-spec.md) | personas, journeys, features F1 to F8 |
+| 04 | [Architecture](docs/04-architecture.md) | subsystems, request paths, failure matrix |
+| 05 | [Agent Contracts](docs/05-agent-contracts.md) | the enforcement surface: schemas |
+| 06 | [Data Design](docs/06-data-design.md) | single-table layout, vault, Merkle chain |
+| 07 | [Evaluation](docs/07-evaluation.md) | corpus, metric bars, A/B protocol |
+| 08 | [Security and Privacy](docs/08-security-privacy.md) | threat model for the kernel itself |
+| 09 | [Deployment](docs/09-deployment.md) | environments, deploy mechanics, cost model |
+| 10 | [Console](docs/10-console.md) | public zero-login surface |
+| 11 | [Roadmap](docs/11-roadmap.md) | phases P0 to P6, eras beyond |
+| 12 | [Pitch](docs/12-pitch.md) | video script, launch checklist |
+| 13 | [API Spec](docs/13-api-spec.md) | REST contract, error registry, events |
+| 14 | [Testing Strategy](docs/14-testing-strategy.md) | test pyramid, phase loop, CI gates |
+| 15 | [Risk Register](docs/15-risk-register.md) | scored risks with mitigations |
+| 16 | [Glossary](docs/16-glossary.md) | normative definitions |
+| 17 | [Non-Functional and SLOs](docs/17-nonfunctional-slo.md) | latency budgets, error budget policy |
+| 18 | [ADRs](docs/18-adrs.md) | the eight decisions that define the system |
+| 19 | [Tech Stack](docs/19-tech-stack.md) | current stack, pinning policy, rejected options |
+| -- | [What Broke](docs/what-broke.md) | append-only failure ledger |
+| -- | [Submission article](docs/submission/technical-article-v2.md) | the long-form engineering write-up |
 
-## One-Paragraph Summary
+## Run your own stack
 
-Enterprises are handing autonomous agents privileged cloud access, and a single hallucinated or injected tool call can destroy production state with no recourse. Text-level guardrails only read strings, static scanners only read code, and posture tools only watch configuration; nothing governs the moment an agent's decision becomes a live AWS mutation. **Antares** is that missing layer: an in-line hypervisor that intercepts every mutating tool call, enforces a deterministic code gate with veto power, obtains adversarial cross-vendor consensus (Amazon Nova Pro judging blast radius, a non-Amazon family model red-teaming intent), measures real blast radius from live read-only probes of actual AWS state, executes through compensating sagas that make every mutation reversible, and writes a tamper-evident Merkle receipt for every action. It ships with a zero-login public console where anyone can dispatch preset scenarios against live sandboxed AWS resources and watch the kernel vote, block, and roll back in real time.
+Requirements: AWS CLI configured, AWS SAM CLI, Python 3.12, Node 20, GNU make.
 
-## Build Limitations (read before judging)
+```
+make deploy      # builds the aarch64 bundle and deploys the dev stack
+make verify      # receipt verification against a live decision
+make test        # unit + contract suites
+make lint        # ruff + mypy strict
+make eval        # the doc 07 benchmark harness
+```
 
-P1 is live: the gate API runs on AWS and returns real verdicts (22 to 34 ms in-Lambda, measured; see docs/phase-log.md). The layers above it are still design targets until their phases land. Specifics:
+The deploy creates only the sandbox namespace: two DynamoDB tables, the site
+bucket, the Lambda functions, the regional API and the CloudFront
+distribution. Console source lives in [console/](console); it is a Next.js
+static export served from S3 with `/v1/*` proxied same-origin to the API.
 
-- **Fast-path latency** is measured (22 to 34 ms in-Lambda against the 120 ms budget); quorum, probe and rollback figures remain budgets until P2 and P3.
-- **Detection metrics** in doc 07 are targets on a designed corpus, not observed field performance.
-- **Multi-account governance** (Control Tower, cross-org roles) is documented as the enterprise tier and deliberately out of scope for the build window.
-- **Mutation surface** is limited to the sandbox namespace: one DynamoDB table, one S3 bucket, one SSM path prefix. The kernel's IAM role can touch nothing else, by policy and by proof (doc 08).
+## License
 
-## Design Principles (non-negotiable)
+Apache License 2.0.
 
-1. **Code decides.** The deterministic gate holds veto. No model, anywhere in the pipeline, can overturn a code-level BLOCK or force an action past policy.
-2. **Evidence or it did not happen.** Every verdict, vote and mutation carries a receipt. A security decision without an audit trail is a rumor.
-3. **Blast radius is measured, never imagined.** Radius comes from live read-only probes of real AWS state, not from a model's imagination.
-4. **Every mutation is reversible.** Actions run through compensating sagas with pre-captured state, or they wait.
-5. **The kernel cannot harm what it guards.** Its IAM scope ends at the sandbox namespace. A safety product that can nuke its own account is a landmine, not a product.
-6. **Honest metrics.** Measured numbers only, corpus and thresholds disclosed, Wilson 95 percent intervals on every proportion.
-7. **Fail open or fail loud, by policy, never by accident.** Reads degrade to allow-with-flag when the kernel is down; destructive classes halt. The failure behavior is itself a documented, tested policy.
+## Author
 
-## Conventions
-
-- Diagrams: Mermaid, rendered natively on GitHub.
-- Errors: RFC 7807 problem+json (doc 13).
-- Proportions: Wilson 95 percent intervals (doc 07).
-- Commits: conventional commits. No em dashes anywhere, in code, docs, or commit messages.
-- Doc statuses: Draft, then Reviewed, then Locked. Only Locked docs gate build phases.
-- Failure ledger: every build failure lands in what-broke.md the day it happens, with symptom, root cause, fix, prevention, phase. Entries are append-only.
-
-## Changelog
-
-| Version | Date | Change |
-|---------|------|--------|
-| 0.1 | 2026-09-27 | Initial full suite drafted for owner review. No doc is Locked. |
+**Prakhar Shukla** builds fraud-defense and AI-trust infrastructure from
+Nagpur, India. TruthLayer verifies what AI claims. Gatehouse gates scam
+decisions. Sentinel scores cross-merchant fraud. Antares governs the agents
+themselves. Two IEEE publications on deepfake detection; national winner at
+IIT Delhi; top 50 global finalist in the AWS AIideas competition.
