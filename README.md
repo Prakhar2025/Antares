@@ -1,6 +1,41 @@
-# Antares
+<p align="center">
+  <img src="docs/media/antares-cover-1200x675.jpg" alt="Antares: a poisoned write judged live by the kernel" width="820">
+</p>
 
-**The deterministic execution kernel for autonomous AI agents on AWS.**
+<p align="center">
+  <strong>The deterministic execution governor for autonomous AI agents on AWS.</strong><br>
+  Every mutating tool call is gated by deterministic code first, judged on escalation by a<br>
+  cross-vendor Amazon Bedrock quorum, measured against live cloud state, reversible by construction.
+</p>
+
+<p align="center">
+  <img alt="CI" src="https://github.com/Prakhar2025/Antares/actions/workflows/ci.yml/badge.svg">
+  <img alt="Python" src="https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white">
+  <img alt="Bedrock" src="https://img.shields.io/badge/AWS-Bedrock-FF9900?logo=amazonaws&logoColor=white">
+  <img alt="Console" src="https://img.shields.io/badge/console-Next.js-000000?logo=nextdotjs&logoColor=white">
+  <img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-4cc38a">
+</p>
+
+<p align="center">
+  <a href="docs/media/antares-walkthrough-103s.mp4"><img alt="Walkthrough" src="https://img.shields.io/badge/%E2%96%B6%20walkthrough-103%20seconds-FF0000?logo=youtube&logoColor=white"></a>
+  <a href="https://d3jhd66xz9xdo9.cloudfront.net"><img alt="Live console" src="https://img.shields.io/badge/live%20console-attack%20it%20yourself-4cc38a"></a>
+</p>
+
+<p align="center">
+  <a href="docs/media/antares-walkthrough-103s.mp4"><strong>Watch the 103-second walkthrough</strong></a>
+  &nbsp;&middot;&nbsp;
+  <a href="https://d3jhd66xz9xdo9.cloudfront.net"><strong>Live console, zero login</strong></a>
+  &nbsp;&middot;&nbsp;
+  <a href="BENCHMARK.md">Benchmark</a>
+  &nbsp;&middot;&nbsp;
+  <a href="docs/what-broke.md">Failure ledger</a>
+</p>
+
+<p align="center">
+  <a href="docs/media/antares-walkthrough-103s.mp4"><img src="docs/media/antares-cover-1200x675.jpg" alt="Antares: the poisoned write, judged live" width="620"></a>
+</p>
+
+---
 
 Agents hold real credentials. Antares stands between their decisions and your
 cloud: every mutating tool call is gated by deterministic code first, judged on
@@ -9,7 +44,7 @@ against live cloud state through read-only probes, executed through compensating
 sagas, and recorded into a tamper-evident Merkle chain. The principle is also
 the control flow: **models propose, code decides.**
 
-![Antares landing](docs/assets/landing.png)
+**Status: live on AWS, zero login, USD 10 budget alarm, under USD 2 spent.**
 
 ## Live, zero login
 
