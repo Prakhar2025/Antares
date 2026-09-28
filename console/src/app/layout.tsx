@@ -6,7 +6,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Antares: the execution governor for autonomous AI agents",
   description:
-    "Every tool call gated by code, judged by a cross-vendor quorum, measured against live cloud state, reversible by construction. Models propose, code decides.",
+    "Every tool call gated by deterministic code, judged by a cross-vendor Bedrock quorum, measured against live cloud state, reversible by construction. Models propose, code decides.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
