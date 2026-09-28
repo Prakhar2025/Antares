@@ -147,3 +147,10 @@ Root cause: the benchmark phase changed fusion policy and added corpus.py withou
 Fix: the two tests now assert the documented behavior, clean votes on DESTROY abstain with QUORUM-DEST-001. The remaining gap is measured and queued as its own work item; corpus.py at 0 percent is the largest single cause.
 Prevention: the phase-exit gate runs make test from a clean tree and a push is blocked on any red line, coverage included; no policy change lands without its fusion-matrix tests updated in the same commit.
 Phase: P6 (launch)
+
+## [2026-09-28] the pipe-mask failure repeated: a second commit went out on red
+Symptom: commit 2d45483 was pushed while the gate was failing (5 ruff errors in evals/run_eval.py and scripts/drill_kill_switch.py, plus one mypy error in corpus.py behind lint); CI caught it 12 minutes later. The command piped make output through tail, so the gate exit code never reached the && chain.
+Root cause: the P1 prevention rule, never pipe a gate command, was violated by the same agent that wrote it; output-trimming habit overrode the rule, and pre-existing lint and type debt from the benchmark and launch phases, never re-gated after those commits, surfaced at the same moment.
+Fix: the five ruff errors cleared (dead bedrock client removed from the eval runner, long line wrapped, drill script imports sorted with unused imports dropped), the corpus poisons list annotated list[dict[str, Any]] for mypy strict, and make gates verified green unpiped (ruff, mypy, 110 tests, coverage 90.53 percent) before any further push.
+Prevention: gate commands are never piped, period; the only allowed form is a bare make gates with failures read in full. Commit and push never share a command line with a gate; they run as separate commands after a green one. CI is the durable backstop and a red CI run is a build defect handled the same day.
+Phase: P6 (launch)
