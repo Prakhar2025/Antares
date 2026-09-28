@@ -241,7 +241,7 @@ class TestGateRoute:
 
 
 class TestQuorumFlow:
-    def test_clean_votes_flip_abstain_to_allow(self, app_with_quorum) -> None:
+    def test_clean_votes_abstain_on_destructive(self, app_with_quorum) -> None:
         response = app_with_quorum(
             _event(
                 "POST",
@@ -254,8 +254,8 @@ class TestQuorumFlow:
             )
         )
         verdict = json.loads(response["body"])
-        assert verdict["state"] == "ALLOW"
-        assert verdict["quorum"]["fusion"] == "QUORUM-ALLOW-001"
+        assert verdict["state"] == "ABSTAIN"
+        assert verdict["quorum"]["fusion"] == "QUORUM-DEST-001"
         assert verdict["quorum"]["votes"]["adversary"]["model"] == LLAMA
         assert verdict["quorum"]["usage"]["input"] > 0
 

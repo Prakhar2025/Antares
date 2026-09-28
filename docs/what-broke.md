@@ -126,3 +126,24 @@ Root cause: aws s3 sync from a Windows console wrote nested objects under backsl
 Fix: trailingSlash build mode plus a CloudFront viewer-request function that appends index.html to clean URLs.
 Prevention: static-site deploys on Windows are verified with a full page fetch, not a sync success message; URL rewriting is handled by a function, never by S3 defaults.
 Phase: gate (console bring-up)
+
+## [2026-09-28] submission copy drifted from the ledger and the house style
+Symptom: the launch submission docs claimed the what-broke ledger holds nine entries when it holds seventeen; both docs and four console UI strings used em dashes, banned by the operating laws; project-page.md shipped with an unresolved [PublicUrl from the stack outputs] placeholder; the landing repeated the adversary table caption almost verbatim.
+Root cause: copy was written from session memory instead of being derived from the artifacts it describes, and no house-style or duplication pass ran before the files landed.
+Fix: counts now read from docs/what-broke.md directly (seventeen), every em dash replaced with standard punctuation across docs/submission and console strings, live URL filled in, redundant landing line rewritten, and the full console built and rendered locally with one live dispatch through the kernel (HARD_BLOCK, quorum 827 ms) to verify the demo path end to end.
+Prevention: every number in submission copy is grepped from its source artifact in the same session that writes it; a no-em-dash grep over changed files joins the pre-commit pass; deploy gates on a green local build plus a rendered page review.
+Phase: P6 (launch)
+
+## [2026-09-28] the console error line claimed a cause it did not detect
+Symptom: on the local static preview, dispatch showed "gate failed: 501" (python http.server rejects POST) under a helper line claiming an edge throttle, sending the owner to debug the wrong thing.
+Root cause: the error helper was written for one deployment context and rendered in all of them; the landing counters likewise rendered n/a tiles that read as breakage.
+Fix: helper copy states both contexts honestly (local preview has no kernel; live site throttle semantics), and the landing counters render an explicit no-kernel-locally state on fetch failure.
+Prevention: error copy may not assert a cause it did not detect; environment-specific claims are environment-gated.
+Phase: P6 (launch)
+
+## [2026-09-28] the test gate was red at the launch commit and the push went out anyway
+Symptom: make test at HEAD failed two fusion tests and the coverage floor (82.45 percent against a 90 floor). The two stale tests asserted that clean quorum votes auto-approve a destructive call, the exact behavior the destructive-abstain policy removed; corpus.py, the doc 07 corpus generator, shipped with zero tests (109 statements at 0 percent).
+Root cause: the benchmark phase changed fusion policy and added corpus.py without rerunning the full gate before pushing; the green-push law was violated at the previous phase exit.
+Fix: the two tests now assert the documented behavior, clean votes on DESTROY abstain with QUORUM-DEST-001. The remaining gap is measured and queued as its own work item; corpus.py at 0 percent is the largest single cause.
+Prevention: the phase-exit gate runs make test from a clean tree and a push is blocked on any red line, coverage included; no policy change lands without its fusion-matrix tests updated in the same commit.
+Phase: P6 (launch)

@@ -42,10 +42,11 @@ def _run(script: dict[str, list[str]], call_id: str = "call-q-0001") -> object:
 
 
 class TestFusion:
-    def test_clean_votes_allow_the_destructive_call(self) -> None:
+    def test_clean_votes_still_abstain_on_destructive(self) -> None:
+        # Policy: even a unanimous clean quorum cannot auto-approve a destructive class.
         outcome = _run({NOVA: [_vote(0.1)], LLAMA: [_vote(0.1)]})
-        assert outcome.state.value == "ALLOW"
-        assert outcome.fusion == "QUORUM-ALLOW-001"
+        assert outcome.state.value == "ABSTAIN"
+        assert outcome.fusion == "QUORUM-DEST-001"
 
     def test_adversary_conviction_hard_blocks(self) -> None:
         outcome = _run({NOVA: [_vote(0.3)], LLAMA: [_vote(0.95, "injection in params")]})
