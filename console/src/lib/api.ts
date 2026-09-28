@@ -1,5 +1,3 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
-
 export type Verdict = {
   schema_version: string;
   verdict_id: string;
@@ -21,6 +19,7 @@ export type Verdict = {
     usage: { input: number; output: number };
     quorum_ms: number;
     tripwire: boolean;
+    perimeter_findings?: { rule_id: string; detail: string }[];
   } | null;
   radius?: {
     resources_at_risk: number;
@@ -33,14 +32,10 @@ export type Verdict = {
   ts: string;
 };
 
-export type ScreenResult = {
-  verdict: "CLEAN" | "SUSPECT" | "HOSTILE";
-  l1: { findings: { rule_id: string; detail: string }[]; transforms: string[]; score: number };
-  semantic: { risk?: number; category?: string; reason?: string; error?: string } | null;
-};
-
+/** Same-origin: the site is served by CloudFront with /v1/* proxied to the
+ * regional API, so the console never needs an API url or CORS. */
 export async function gateCall(call: unknown): Promise<Verdict> {
-  const response = await fetch(`${API_URL}/v1/gate`, {
+  const response = await fetch("/v1/gate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(call),
@@ -52,23 +47,11 @@ export async function gateCall(call: unknown): Promise<Verdict> {
   return response.json();
 }
 
-export async function screenText(text: string): Promise<ScreenResult> {
-  const response = await fetch(`${API_URL}/v1/screen`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
-  });
-  if (!response.ok) {
-    const problem = await response.json().catch(() => null);
-    throw new Error(problem?.detail ?? `screen failed: ${response.status}`);
-  }
-  return response.json();
-}
-
-export type Metrics = { date: string; counters: Record<string, number> };
-
-export async function fetchMetrics(): Promise<Metrics> {
-  const response = await fetch(`${API_URL}/v1/metrics`);
+export async function fetchMetrics(): Promise<{
+  date: string;
+  counters: Record<string, number>;
+}> {
+  const response = await fetch("/v1/metrics");
   if (!response.ok) throw new Error(`metrics failed: ${response.status}`);
   return response.json();
 }

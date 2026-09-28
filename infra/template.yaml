@@ -862,6 +862,12 @@ Resources:
             DomainName: !GetAtt SiteBucket.RegionalDomainName
             S3OriginConfig:
               OriginAccessIdentity: ""
+          - Id: api-origin
+            DomainName: !Sub "${Api}.execute-api.${AWS::Region}.amazonaws.com"
+            OriginPath: /dev
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols: [TLSv1.2]
         DefaultCacheBehavior:
           TargetOriginId: site-origin
           ViewerProtocolPolicy: redirect-to-https
@@ -870,6 +876,13 @@ Resources:
           FunctionAssociations:
             - EventType: viewer-request
               FunctionARN: !GetAtt ConsoleIndexFunction.FunctionMetadata.FunctionARN
+        CacheBehaviors:
+          - PathPattern: /v1/*
+            TargetOriginId: api-origin
+            ViewerProtocolPolicy: redirect-to-https
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            Compress: true
 
 Outputs:
   PublicUrl:
