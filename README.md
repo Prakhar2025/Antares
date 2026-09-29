@@ -31,8 +31,13 @@
   <a href="docs/what-broke.md">Failure ledger</a>
 </p>
 
+<!-- INLINE PLAYER, 30 seconds: open any issue in this repo, drag
+     docs/media/antares-walkthrough-103s.mp4 into the comment box, copy the
+     generated github.com/user-attachments/assets/... URL, then replace the
+     poster <a> below with that URL on its own line. GitHub renders it as a
+     playable video right here in the README. -->
 <p align="center">
-  <a href="docs/media/antares-walkthrough-103s.mp4"><img src="docs/media/antares-cover-1200x675.jpg" alt="Antares: the poisoned write, judged live" width="620"></a>
+  <a href="docs/media/antares-walkthrough-103s.mp4"><img src="docs/media/antares-video-poster-nightmare.jpg" alt="The nightmare: an injected instruction riding in a data field" width="820"></a>
 </p>
 
 ---
