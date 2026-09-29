@@ -321,7 +321,7 @@ export default function LandingV2() {
                 act on is the live console, dispatch an attack yourself.
               </p>
             </div>
-            <div className="lg:col-span-7">
+            <div className="min-w-0 lg:col-span-7">
               <BenchmarkTable />
               <div className="mt-8 border-l-2 border-antares pl-5">
                 <p className="mono text-[11px] uppercase tracking-[0.16em] text-antares">the miss we publish</p>
@@ -357,13 +357,13 @@ export default function LandingV2() {
                 every verdict ships a verifiable receipt
               </p>
             </div>
-            <div className="lg:col-span-7">
+            <div className="min-w-0 lg:col-span-7">
               <div className="border border-inkw/80 bg-coal shadow-[0_24px_60px_-24px_rgba(25,21,17,0.45)]">
                 <div className="flex items-center justify-between border-b border-coalline px-6 py-3">
                   <span className="mono text-[10px] uppercase tracking-[0.18em] text-fog">your harness · one POST</span>
                   <span className="mono text-[10px] text-fog">python</span>
                 </div>
-                <pre className="mono whitespace-pre px-6 py-6 text-[19px] leading-[1.9] text-paper">{SNIPPET}</pre>
+                <pre className="mono overflow-x-auto whitespace-pre px-6 py-6 text-[16px] leading-[1.9] text-paper">{SNIPPET}</pre>
               </div>
             </div>
           </div>
@@ -443,8 +443,7 @@ export default function LandingV2() {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-6">
           <span className="mono text-[11px] text-fog">models propose, code decides</span>
           <span className="mono text-[11px] text-fog">
-            antares-dev namespace · us-east-1 ·{" "}
-            <Link href="/archive" className="underline hover:text-inkw">compare with v1</Link>
+            antares-dev namespace · us-east-1
           </span>
         </div>
       </footer>
