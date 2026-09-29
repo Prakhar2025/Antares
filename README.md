@@ -75,6 +75,26 @@ a live AWS mutation, was unoccupied. Antares occupies it.
 
 Six stages. Four of them can kill the call.
 
+```mermaid
+flowchart TB
+    A["agent tool call"] --> GW["S1 gateway · unregistered tools: 404"]
+    GW --> P["S0 perimeter · canonicalize, 16-rule signatures"]
+    P --> G["S2 deterministic gate · schemas, shell tokens, ARN allowlists"]
+    G -->|"veto"| HB["HARD_BLOCK · no model consulted"]
+    G -->|"clean, non-escalated · fast path 22-34 ms"| AL["ALLOW · receipt"]
+    G -->|"escalated"| Q["S3 quorum · nova-pro judges, llama-3.3-70b attacks"]
+    P -.->|"findings as identifiers"| Q
+    PR["S4 probes · live blast radius"] --> F{"fusion table"}
+    Q --> F
+    F -->|"adversary conviction"| HB
+    F -->|"divergence or destructive class"| AB["ABSTAIN · KMS bypass, 60 s"]
+    F -->|"clean, non-destructive"| AL
+    AL --> S["S5 saga · compensating execution"]
+    S --> L["S6 provenance ledger · Merkle receipt"]
+    HB --> L
+    AB --> L
+```
+
 | Stage | Subsystem | Guarantee |
 |---|---|---|
 | 01 | Perimeter (S0) | untrusted content is canonicalized, then screened by a 16-rule signature library and a semantic classifier; findings travel as identifiers, hostile text never reaches a model raw |
@@ -205,7 +225,7 @@ unfixed.
 | 18 | [ADRs](docs/18-adrs.md) | the eight decisions that define the system |
 | 19 | [Tech Stack](docs/19-tech-stack.md) | current stack, pinning policy, rejected options |
 | -- | [What Broke](docs/what-broke.md) | append-only failure ledger |
-| -- | [Submission article](docs/submission/technical-article-v2.md) | the long-form engineering write-up |
+| -- | [Submission article](docs/submission/technical-article-v4.md) | the long-form engineering write-up |
 
 ## Run your own stack
 

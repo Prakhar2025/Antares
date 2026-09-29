@@ -87,6 +87,51 @@ block short-circuits all model invocations. Everything that follows is that
 sentence made executable, plus the places where the sentence turned out to be
 harder than it sounds.
 
+```mermaid
+flowchart TB
+    A["agent tool call"] --> GW["S1 gateway · unregistered tools: 404"]
+    GW --> P["S0 perimeter · canonicalize, 16-rule signatures"]
+    P --> G["S2 deterministic gate · schemas, shell tokens, ARN allowlists"]
+    G -->|"veto"| HB["HARD_BLOCK · no model consulted"]
+    G -->|"clean, non-escalated · fast path 22-34 ms"| AL["ALLOW · receipt"]
+    G -->|"escalated"| Q["S3 quorum · nova-pro judges, llama-3.3-70b attacks"]
+    P -.->|"findings as identifiers"| Q
+    PR["S4 probes · live blast radius"] --> F{"fusion table"}
+    Q --> F
+    F -->|"adversary conviction"| HB
+    F -->|"divergence or destructive class"| AB["ABSTAIN · KMS bypass, 60 s"]
+    F -->|"clean, non-destructive"| AL
+    AL --> S["S5 saga · compensating execution"]
+    S --> L["S6 provenance ledger · Merkle receipt"]
+    HB --> L
+    AB --> L
+```
+
+## Integrating an agent in five lines
+
+Antares is an API, not a closed dashboard. Any harness that can issue an
+HTTP POST, a LangChain tool decorator, an MCP server or a raw execution
+loop, routes its agent's tool calls through the kernel with zero changes to
+the agent's system prompt or reasoning loop:
+
+```python
+from requests import post
+
+GATE = "https://d3jhd66xz9xdo9.cloudfront.net/v1/gate"
+
+def gated(tool_call):
+    v = post(GATE, json=tool_call).json()
+    if v["state"] != "ALLOW":
+        raise Blocked(v["verdict_id"])   # signed receipt, verifiable
+    return execute(tool_call)            # your code, gated
+```
+
+The perimeter canonicalizes the call's untrusted content, the deterministic
+gate checks schemas and ARN allowlists in single-digit milliseconds, and the
+quorum judges escalated mutations, all before execute() touches a single AWS
+API. The destructive routes, execute, rollback and receipt retrieval, are
+API-key gated and write their receipts to the provenance ledger.
+
 ## The deterministic gate, and why its veto is final
 
 The gate is deliberately boring code: strict Pydantic schemas, shell
@@ -313,7 +358,9 @@ retrieval, require an API key.
 ## Reproducing and attacking it
 
 The corpus, the kernel source, the failure ledger, the design documents and
-the CloudTrail proof pack are in the repository. The console is live with no
+the CloudTrail proof pack are in the repository. A 103-second recording of
+the live console blocking the poisoned write ships at
+docs/media/antares-walkthrough-103s.mp4. The console is live with no
 login: dispatch the poisoned write, watch the perimeter flag it before any
 model runs, both judges vote in parallel, and the block land with its
 receipt. Then extend the corpus and publish your numbers next to ours. A
