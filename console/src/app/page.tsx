@@ -80,6 +80,16 @@ const STACK = [
   ["CloudWatch, X-Ray, CloudTrail", "metrics, traces, the agent's own audit trail"],
 ];
 
+const SNIPPET = `from requests import post
+
+GATE = "https://d3jhd66xz9xdo9.cloudfront.net/v1/gate"
+
+def gated(tool_call):
+    v = post(GATE, json=tool_call).json()
+    if v["state"] != "ALLOW":
+        raise Blocked(v["verdict_id"])   # signed receipt, verifiable
+    return execute(tool_call)            # your code, gated`;
+
 function TerminalStage({ index, detail, hostile = false }: { index: string; detail: string; hostile?: boolean }) {
   return (
     <div className="grid grid-cols-[26px_minmax(0,1fr)] gap-2 border-b border-coalline py-1.5 last:border-b-0">
@@ -306,6 +316,10 @@ export default function LandingV2() {
                 family with zero shared lineage with the Nova reasoner. Every
                 candidate ran the full corpus with identical prompts and thresholds.
               </p>
+              <p className="mono mt-6 text-[11px] leading-relaxed text-fog">
+                our own designed corpus, not field performance: the proof you can
+                act on is the live console, dispatch an attack yourself.
+              </p>
             </div>
             <div className="lg:col-span-7">
               <BenchmarkTable />
@@ -319,6 +333,37 @@ export default function LandingV2() {
                   scheduled, the corpus is versioned. A benchmark that only publishes
                   wins is marketing.
                 </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* integrate: the product, not the demo */}
+      <section className="border-t border-paperline py-20">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="grid gap-12 lg:grid-cols-12 lg:gap-10">
+            <div className="lg:col-span-5">
+              <p className="mono text-[10px] uppercase tracking-[0.18em] text-fog">integration</p>
+              <h2 className="serif-display mt-4 text-4xl leading-[1.12]">Gate your agent in five lines.</h2>
+              <p className="mt-5 max-w-md text-[15px] leading-relaxed text-stone">
+                Antares is not a dashboard, it is an API. Any harness that can make
+                an HTTP call routes its agent&rsquo;s tool calls through the kernel: the
+                perimeter, the deterministic gate and the quorum answer before your
+                code executes anything.
+              </p>
+              <p className="mono mt-6 text-[11px] leading-relaxed text-fog">
+                eleven routes · destructive execute and rollback are API-key gated ·
+                every verdict ships a verifiable receipt
+              </p>
+            </div>
+            <div className="lg:col-span-7">
+              <div className="border border-inkw/80 bg-coal shadow-[0_24px_60px_-24px_rgba(25,21,17,0.45)]">
+                <div className="flex items-center justify-between border-b border-coalline px-6 py-3">
+                  <span className="mono text-[10px] uppercase tracking-[0.18em] text-fog">your harness · one POST</span>
+                  <span className="mono text-[10px] text-fog">python</span>
+                </div>
+                <pre className="mono whitespace-pre px-6 py-6 text-[19px] leading-[1.9] text-paper">{SNIPPET}</pre>
               </div>
             </div>
           </div>
