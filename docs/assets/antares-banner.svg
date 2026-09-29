@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="240" viewBox="0 0 820 240" role="img" aria-label="Antares: the execution governor for autonomous AI agents">
+  <rect width="820" height="240" fill="#141210"/>
+  <rect x="0" y="0" width="820" height="3" fill="#b3372c"/>
+  <rect x="0" y="234" width="820" height="6" fill="#2c2823"/>
+
+  <!-- the antares mark: crimson core with orbit ring -->
+  <circle cx="410" cy="64" r="24" fill="none" stroke="#b3372c" stroke-opacity="0.5" stroke-width="3"/>
+  <circle cx="410" cy="64" r="12" fill="#e5484d"/>
+
+  <!-- wordmark -->
+  <text x="410" y="140" text-anchor="middle" font-family="Consolas, 'IBM Plex Mono', 'Courier New', monospace" font-size="42" letter-spacing="16" fill="#f7f5f0">ANTARES</text>
+
+  <!-- serif tagline -->
+  <text x="410" y="176" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-style="italic" font-size="21" fill="#9b9282">models propose, code decides.</text>
+
+  <!-- capability line -->
+  <text x="410" y="216" text-anchor="middle" font-family="Consolas, 'IBM Plex Mono', 'Courier New', monospace" font-size="14" letter-spacing="3" fill="#9b9282">DETERMINISTIC GATE &#183; CROSS-VENDOR QUORUM &#183; BLAST RADIUS &#183; REVERSIBLE</text>
+</svg>

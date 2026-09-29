@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/media/antares-cover-1200x675.jpg" alt="Antares: a poisoned write judged live by the kernel" width="820">
+  <img src="docs/assets/antares-banner.svg" alt="Antares, the execution governor for autonomous AI agents" width="820">
 </p>
 
 <p align="center">
