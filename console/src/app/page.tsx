@@ -430,9 +430,9 @@ export default function LandingV2() {
               </p>
             </div>
             <div className="mono space-y-2 self-end text-xs text-stone lg:col-span-4 lg:col-start-9">
-              <p>2 IEEE publications on deepfake detection</p>
-              <p>top 50 global finalist · aws aiideas</p>
-              <p>national winner · sbi youth ideathon, iit delhi</p>
+              <p>built by a coding agent connected to aws</p>
+              <p>every build call recorded in cloudtrail</p>
+              <p>nineteen design documents · one failure ledger</p>
               <p className="text-inkw">prakhar shukla · nagpur, india</p>
             </div>
           </div>

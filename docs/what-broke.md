@@ -154,3 +154,10 @@ Root cause: the P1 prevention rule, never pipe a gate command, was violated by t
 Fix: the five ruff errors cleared (dead bedrock client removed from the eval runner, long line wrapped, drill script imports sorted with unused imports dropped), the corpus poisons list annotated list[dict[str, Any]] for mypy strict, and make gates verified green unpiped (ruff, mypy, 110 tests, coverage 90.53 percent) before any further push.
 Prevention: gate commands are never piped, period; the only allowed form is a bare make gates with failures read in full. Commit and push never share a command line with a gate; they run as separate commands after a green one. CI is the durable backstop and a red CI run is a build defect handled the same day.
 Phase: P6 (launch)
+
+## [2026-09-29] a size-only sync shipped stale HTML that referenced deleted CSS
+Symptom: /console on the live site rendered as unstyled HTML. The served index.html referenced a content-hashed CSS chunk that the same deploy had deleted from the bucket; the landing page styled fine, which masked the blast radius: every page whose HTML had changed only by asset-hash references was stale.
+Root cause: the deploy used aws s3 sync --size-only. Rebuilt pages differed from the deployed copies only inside content-hashed asset references, same byte length, different hash, so size-only skipped them, and --delete then removed the old hashed chunks the stale HTML pointed at.
+Fix: full sync without --size-only, invalidation of /*, and the vanity credentials rail the same build should have carried was replaced with a provenance block before shipping.
+Prevention: site deploys never use --size-only; content-hashed asset names change every build, so byte size is not an identity test. The deploy sequence is sync, invalidate, then fetch each page and assert its CSS href resolves 200 before declaring success.
+Phase: P6 (launch)
