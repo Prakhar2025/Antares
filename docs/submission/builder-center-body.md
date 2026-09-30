@@ -30,25 +30,7 @@ Antares intercepts every mutating tool call an agent attempts and runs it throug
 
 The control flow is the design principle: **models propose, code decides.** No model anywhere in the pipeline can overturn a code rejection, and a code block short-circuits all model invocations. Everything that follows is that sentence made executable, plus the places where the sentence turned out to be harder than it sounds.
 
-```mermaid
-flowchart TB
-    A["agent tool call"] --> GW["S1 gateway · unregistered tools: 404"]
-    GW --> P["S0 perimeter · canonicalize, 16-rule signatures"]
-    P --> G["S2 deterministic gate · schemas, shell tokens, ARN allowlists"]
-    G -->|"veto"| HB["HARD_BLOCK · no model consulted"]
-    G -->|"clean, non-escalated · fast path 22-34 ms"| AL["ALLOW · receipt"]
-    G -->|"escalated"| Q["S3 quorum · nova-pro judges, llama-3.3-70b attacks"]
-    P -.->|"findings as identifiers"| Q
-    PR["S4 probes · live blast radius"] --> F{"fusion table"}
-    Q --> F
-    F -->|"adversary conviction"| HB
-    F -->|"divergence or destructive class"| AB["ABSTAIN · KMS bypass, 60 s"]
-    F -->|"clean, non-destructive"| AL
-    AL --> S["S5 saga · compensating execution"]
-    S --> L["S6 provenance ledger · Merkle receipt"]
-    HB --> L
-    AB --> L
-```
+[architecture diagram: upload docs/media/antares-architecture.png here]
 
 ## Integrating an agent in five lines
 
