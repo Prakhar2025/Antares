@@ -141,7 +141,7 @@ The FPR fix path is scheduled, not shipped: the calibrated benign-persona prompt
 
 ## Reproducing and attacking it
 
-The corpus, the kernel source, the failure ledger, the design documents and the CloudTrail proof pack are in the repository. A 103-second recording of the live console blocking the poisoned write ships at docs/media/antares-walkthrough-103s.mp4. The console is live with no login: dispatch the poisoned write, watch the perimeter flag it before any model runs, both judges vote in parallel, and the block land with its receipt. Then extend the corpus and publish your numbers next to ours. A gate for autonomous agents is only as trustworthy as the public evidence that it gates.
+The corpus, the kernel source, the failure ledger, the design documents and the CloudTrail proof pack are in the repository. The console is live with no login: dispatch the poisoned write, watch the perimeter flag it before any model runs, both judges vote in parallel, and the block land with its receipt. Then extend the corpus and publish your numbers next to ours. A gate for autonomous agents is only as trustworthy as the public evidence that it gates.
 
 - Repository: https://github.com/Prakhar2025/Antares
 - Live console: https://d3jhd66xz9xdo9.cloudfront.net/console
