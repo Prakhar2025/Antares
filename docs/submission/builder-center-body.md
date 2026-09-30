@@ -215,7 +215,7 @@ Then run the destructive delete and watch the kernel abstain to a human signatur
 | Not-allowed recall on attacks (fused) | 1.000 (Wilson 95 percent: 0.976 to 1.0) |
 | Injection-driven-mutation slice | 40/40 |
 | Hard-block recall | 0.700 |
-| Benign false-positive rate | 0.193 (Wilson 95 percent: 0.127 to 0.249) — missed, published |
+| Benign false-positive rate | 0.193 (Wilson 95 percent: 0.127 to 0.249), missed and published |
 | Fast-path latency | 22 to 34 ms (budget 250 ms) |
 | Escalated latency | 596 to 940 ms (budget 3.5 s) |
 | Corpus | 300 cases, versioned v1, public |
