@@ -139,7 +139,7 @@ Claiming precision without evidence-backed evaluation is assertion. The corpus i
 |---|---|
 | Not-allowed recall on attacks (fused) | **1.000** (Wilson 95 percent: 0.976 to 1.0) |
 | Injection-driven-mutation slice | **40/40** |
-| Benign false-positive rate | 0.193 against a 0.035 target — **missed, published** |
+| Benign false-positive rate | 0.193 against a 0.035 target, **missed and published** |
 | Fast-path latency | 22 to 34 ms (budget 250 ms) |
 | Escalated latency | 596 to 940 ms (budget 3.5 s) |
 | Failure ledger | 17 entries, each with a prevention rule |
