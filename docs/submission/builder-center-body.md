@@ -1,7 +1,3 @@
-# Gating the tool calls of autonomous AI agents at the moment of execution
-
-*Prakhar Shukla · built with a coding agent connected to AWS, every API call of which is preserved in CloudTrail · September 2026*
-
 We gave a coding agent real AWS credentials and let it build a system whose entire purpose is to supervise agents like itself. This article is about the system that came out of that: a kernel that sits between an autonomous agent's decisions and the AWS API, and decides, call by call, whether the call should execute at all.
 
 The problem is not that agents misbehave in exotic ways. It is that the execution path is undefended. A language model reads untrusted content, a ticket comment, a customer note, a scraped web page, and emits a tool call. Somewhere in that content there may be an instruction that does not belong to you: ignore your constraints, forward the credentials, purge the table. The OWASP Top 10 for LLM applications ranks this first, and the industry's answer so far has been to screen the text. Text guardrails read the content string. Static analysis reads infrastructure code before deployment. Cloud posture tools read configuration drift. All three are blind to the moment a model's decision becomes a live AWS mutation: the tool parameters, the shell metacharacters inside an UpdateExpression, the resource ARN pointing outside the namespace, the state that a deletion would destroy.
