@@ -208,6 +208,12 @@ Then run the destructive delete and watch the kernel abstain to a human signatur
 
 **6. The right security boundary is the moment of execution, and it was unoccupied.** Text guardrails, IaC scanners and posture tools each cover a real slice. None of them governs the moment a model's decision becomes a live AWS mutation. That layer has to exist, and it has to be deterministic, because a probabilistic component can never hold final authority over production state.
 
+## Proof of the coding agent connection
+
+A coding agent built this kernel end to end over the AWS console and API. The proof is AWS's own record, not a claim: CloudTrail holds 50 or more Bedrock Converse invocations from the build and 41 Lambda deployments by the agent, with timestamps. The events, the generation script and the independent verification commands are documented in the repository at docs/submission/agent-connection-proof.md.
+
+[CloudTrail screenshots: Event history filtered to bedrock.amazonaws.com and to UpdateFunctionCode]
+
 ## Final Benchmark
 
 | Metric | Value |
