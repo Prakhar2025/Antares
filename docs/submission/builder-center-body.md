@@ -124,14 +124,11 @@ Four perimeter findings before any model ran. Both judges convicted at 0.99. Div
 
 ## Demo
 
-<!-- YouTube walkthrough video: upload antares-walkthrough-103s.mp4, paste the video URL on this line -->
+A 103-second walkthrough of the live kernel intercepting an attack and enforcing policy:
 
-Watch the live kernel take the attack, then dispatch one yourself with no login:
+▶ **[Watch the 103-Second Walkthrough Video](https://github.com/user-attachments/assets/258ad9a2-35af-4574-896b-87180bdbbcc0)** *(Repository video file: `docs/media/antares-walkthrough-103s.mp4`)*
 
-Try it yourself in 60 seconds:
-Go to https://d3jhd66xz9xdo9.cloudfront.net/console
-Pick the poisoned write scenario → DISPATCH → watch the perimeter flag it, both judges vote, HARD_BLOCK land
-Then run the destructive delete and watch the kernel abstain to a human signature even with clean votes
+<!-- If embedding on YouTube or Builder Center video block, paste your direct video URL here -->
 
 ## The 300-Case Adversarial Benchmark
 
