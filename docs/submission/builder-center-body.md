@@ -214,7 +214,11 @@ Then run the destructive delete and watch the kernel abstain to a human signatur
 
 A coding agent built this kernel end to end over the AWS console and API. The proof is AWS's own record, not a claim: CloudTrail holds 50 or more Bedrock Converse invocations from the build and 41 Lambda deployments by the agent, with timestamps. The events, the generation script and the independent verification commands are documented in the repository at docs/submission/agent-connection-proof.md.
 
-[CloudTrail screenshots: Event history filtered to bedrock.amazonaws.com and to UpdateFunctionCode]
+![The AI coding agent verifying AWS credentials inside the workspace](https://raw.githubusercontent.com/Prakhar2025/Antares/main/docs/assets/agent-terminal-proof.png)
+*Figure 1: The AI coding agent verifying live AWS credentials (IAM user truthlayer-user, account 846719029074, region us-east-1) inside the workspace before deploying.*
+
+![AWS CloudTrail Event History recording agent deployments](https://raw.githubusercontent.com/Prakhar2025/Antares/main/docs/assets/cloudtrail-events-proof.png)
+*Figure 2: AWS CloudTrail Event History in us-east-1 recording truthlayer-user deploying CloudFormation stack antares-dev, API Gateway deployments, and updating Lambda function antares-dev-gate.*
 
 ## Final Benchmark
 

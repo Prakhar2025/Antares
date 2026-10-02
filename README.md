@@ -225,6 +225,7 @@ unfixed.
 | 18 | [ADRs](docs/18-adrs.md) | the eight decisions that define the system |
 | 19 | [Tech Stack](docs/19-tech-stack.md) | current stack, pinning policy, rejected options |
 | -- | [What Broke](docs/what-broke.md) | append-only failure ledger |
+| -- | [Agent Proof](docs/submission/agent-connection-proof.md) | documented proof of coding agent connection to AWS |
 | -- | [Submission article](docs/submission/technical-article-v4.md) | the long-form engineering write-up |
 
 ## Run your own stack

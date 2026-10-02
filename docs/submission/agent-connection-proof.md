@@ -32,6 +32,20 @@ aws cloudtrail lookup-events --lookup-attributes AttributeKey=EventName,Attribut
 
 The full event JSON, with request parameters and identities, ships in `docs/submission/proof-pack.json` alongside `scripts/` (the generation script), so the pack can be regenerated from the account at any time.
 
+## Visual evidence
+
+### 1. Coding agent terminal verifying AWS credentials and sandbox scope
+
+The AI coding agent verifying live AWS credentials (IAM user `truthlayer-user`, account `846719029074`, region `us-east-1`) inside the `Zero to Shipped` workspace before orchestrating the deployment:
+
+![Coding agent verifying AWS credentials and permissions](../assets/agent-terminal-proof.png)
+
+### 2. AWS CloudTrail console event history
+
+AWS CloudTrail Event History in the AWS Console for account `846719029074` (`us-east-1`), recording `truthlayer-user` deploying CloudFormation stack `antares-dev`, creating API Gateway stages, and updating the Lambda function `antares-dev-gate`:
+
+![AWS CloudTrail Event History confirming agent deployments](../assets/cloudtrail-events-proof.png)
+
 ## What this proves
 
 A coding agent issued the Bedrock invocations that power every quorum judgment, deployed the Lambda functions that run the kernel, and performed the DynamoDB and API Gateway operations behind the live site. The live console at https://d3jhd66xz9xdo9.cloudfront.net/console is operated by the same infrastructure these events deployed.

@@ -341,7 +341,8 @@ CloudTrail. We ship the proof pack (the events plus the script that
 generates them) in the repository, next to the failure ledger and nineteen
 design documents with statuses that precede the code they gate. If you let
 an agent hold credentials, the minimum bar is that its behavior is
-reconstructible afterward.
+reconstructible afterward. Complete visual evidence from the IDE terminal
+and CloudTrail console is documented in [docs/submission/agent-connection-proof.md](agent-connection-proof.md).
 
 ## What it does not do yet
 
