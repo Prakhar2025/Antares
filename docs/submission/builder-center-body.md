@@ -4,7 +4,7 @@ That is what I built.
 
 ## App Category
 
-Workplace Efficiency
+Workplace Efficiency · Startup lane
 
 ## What Antares Is
 
@@ -123,6 +123,8 @@ This is a real dispatch against the live kernel, the poisoned write with OWASP L
 Four perimeter findings before any model ran. Both judges convicted at 0.99. Divergence zero. The block landed 1,264 ms after dispatch, with evidence bundle 0e6a85e4d7e94d91ad39642267317ead persisted to the provenance ledger.
 
 ## Demo
+
+<!-- YouTube walkthrough video: upload antares-walkthrough-103s.mp4, paste the video URL on this line -->
 
 Watch the live kernel take the attack, then dispatch one yourself with no login:
 
