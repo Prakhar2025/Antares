@@ -184,7 +184,7 @@ at every milestone gate. CloudTrail records the agent's own build calls,
 committed as a proof pack with its generation script
 ([docs/submission/proof-pack.json](docs/submission/proof-pack.json)). The
 failure ledger ([docs/what-broke.md](docs/what-broke.md)) carries every build
-failure the day it happened with root cause and prevention rule, seventeen
+failure the day it happened with root cause and prevention rule, 22
 entries at this writing; a failure without a prevention rule is treated as
 unfixed.
 

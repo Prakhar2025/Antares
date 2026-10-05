@@ -141,7 +141,7 @@ Claiming precision without evidence-backed evaluation is assertion. The corpus i
 | Benign false-positive rate | 0.193 against a 0.035 target, **missed and published** |
 | Fast-path latency | 22 to 34 ms (budget 250 ms) |
 | Escalated latency | 596 to 940 ms (budget 3.5 s) |
-| Failure ledger | 17 entries, each with a prevention rule |
+| Failure ledger | 22 entries, each with a prevention rule |
 
 The miss is the number most builds would hide. The cause: the red-team model doing its job on benign text that quotes attack grammar, security prose looks like an attack to a paranoid judge. The regression is named, the fix path is scheduled against corpus v1, and the strongest threat is stated in the repository: the corpus was authored by the same team that built the kernel. Extend it and publish your numbers next to ours.
 
@@ -228,7 +228,7 @@ A coding agent built this kernel end to end over the AWS console and API. The pr
 | Fast-path latency | 22 to 34 ms (budget 250 ms) |
 | Escalated latency | 596 to 940 ms (budget 3.5 s) |
 | Corpus | 300 cases, versioned v1, public |
-| Failure ledger | 17 entries, prevention rules included |
+| Failure ledger | 22 entries, prevention rules included |
 | Tests | 110 passing, CI-gated |
 | Cost | Under USD 2 total, USD 10 live budget alarm |
 
