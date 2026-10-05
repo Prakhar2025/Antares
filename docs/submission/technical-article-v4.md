@@ -259,7 +259,7 @@ behind CloudFront. Both were bisected through disposable probe stacks before
 touching the real one.
 
 Both incidents, plus the transaction constraint above, are in the
-repository's failure ledger with a prevention rule each: seventeen entries
+repository's failure ledger with a prevention rule each: 22 entries
 at this writing, each with symptom, root cause, fix and prevention, appended
 the day the failure happened. A failure without a prevention rule is treated
 as unfixed. That ledger is, frankly, the part of the project we would keep
